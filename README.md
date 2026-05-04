@@ -1,144 +1,154 @@
-CogniCare – Hardware Module (Smartwatch System)
-📌 Overview
+# CogniCare – Hardware Module (Smartwatch System)
+
+## 📌 Overview
+
 The CogniCare Smartwatch is a wearable hardware system designed for Alzheimer’s patients. It continuously monitors health signals (heart rate + stress) and location (GPS), and intelligently triggers emergency communication (calls + WhatsApp alerts) using AI integration.
 
-⌚ Hardware Components
+## ⌚ Hardware Components
+
 🫀 MAX30102 (Heart Rate & SpO₂ Sensor)
-Tracks:
 
-Heart Rate (BPM)
++ Tracks:
 
-Blood Oxygen (SpO₂)
+  + Heart Rate (BPM)
 
-Purpose:
+  + Blood Oxygen (SpO₂)
 
-Detect abnormal heart activity
++ Purpose:
 
-Identify panic or distress conditions
+  + Detect abnormal heart activity
 
-⚡ GSR Sensor (Stress Detection)
-Tracks:
+  + Identify panic or distress conditions
 
-Skin conductivity (stress indicator)
-Purpose:
+## ⚡ GSR Sensor (Stress Detection)
++ Tracks:
 
-Detect emotional spikes (fear, anxiety)
+  + Skin conductivity (stress indicator)
++ Purpose:
+
+  + Detect emotional spikes (fear, anxiety)
 Key Logic:
 
-High GSR = High stress
-🧠 ESP32 (Processing Unit)
-Acts as the brain of the watch
+  + High GSR = High stress
 
-Responsibilities:
+## 🧠 ESP32 (Processing Unit)
 
-Collects sensor data (HR + GSR)
++ Acts as the brain of the watch
 
-Processes real-time conditions
++ Responsibilities:
 
-Sends data to backend/AI system
+  + Collects sensor data (HR + GSR)
 
-Triggers emergency actions
+  + Processes real-time conditions
 
-📺 OLED Display
-Displays:
+  + Sends data to backend/AI system
 
-Heart rate
+  + Triggers emergency actions
 
-Stress status
+## 📺 OLED Display
++ Displays:
 
-Guidance messages
+  + Heart rate
 
-Purpose:
+  + Stress status
 
-Provides simple instructions for patients
-📍 GPS Module
-Tracks real-time location
+  + Guidance messages
 
-Features:
++ Purpose:
 
-Stores safe locations (home, hospital, etc.)
+  + Provides simple instructions for patients
+## 📍 GPS Module
++ Tracks real-time location
 
-Tracks current position continuously
++ Features:
 
-Smart Behavior:
+  + Stores safe locations (home, hospital, etc.)
 
-When location changes, system retrieves 10–15 nearby saved locations
+  + Tracks current position continuously
 
-Helps guide user back to safe zones
++ Smart Behavior:
 
-🔗 Hardware + Intelligent Alert System
-🚨 Emergency Detection (Triggered by Hardware)
-The smartwatch detects critical situations using:
+  + When location changes, system retrieves 10–15 nearby saved locations
 
-High Heart Rate (MAX30102)
+  + Helps guide user back to safe zones
 
-High Stress (GSR)
+## 🔗 Hardware + Intelligent Alert System
 
-Unsafe Location (GPS)
+## 🚨 Emergency Detection (Triggered by Hardware)
+
++ The smartwatch detects critical situations using:
+
++ High Heart Rate (MAX30102)
+
++ High Stress (GSR)
+
++ Unsafe Location (GPS)
 
 👉 When these conditions are met:
 
-🤖 AI + Communication Trigger (What your system DOES)
-The watch sends data to the AI system (Groq-powered LLM)
+## 🤖 AI + Communication Trigger (What your system DOES)
 
-AI analyzes the situation and decides response
++ The watch sends data to the AI system (Groq-powered LLM)
 
-📞 Emergency Response Actions
-1. 📲 Call to Caregiver (via Twilio)
-Automatic voice call is triggered
++ AI analyzes the situation and decides response
 
-Caregiver is informed:
+## 📞 Emergency Response Actions
+## 1. 📲 Call to Caregiver (via Twilio)
++ Automatic voice call is triggered
 
-Patient is in distress OR
++ Caregiver is informed:
 
-Patient is in an unsafe location
+  + Patient is in distress OR
 
-2. 💬 WhatsApp Alert (via Twilio)
-Instant message sent to caregiver
+  + Patient is in an unsafe location
 
-Includes:
+## 2. 💬 WhatsApp Alert (via Twilio)
++ Instant message sent to caregiver
 
-Live location (from GPS)
++ Includes:
 
-Alert type (stress / heart rate / location)
+  + Live location (from GPS)
 
-3. 🧭 Navigation Assistance (GPS + AI)
-AI guides the patient back to a safe location
+  + Alert type (stress / heart rate / location)
 
-Based on:
+## 3. 🧭 Navigation Assistance (GPS + AI)
++ AI guides the patient back to a safe location
 
-Stored safe places
++ Based on:
 
-Current GPS coordinates
+  + Stored safe places
 
-Instructions shown on:
+  + Current GPS coordinates
 
-OLED display (simple directions)
-4. 🧘 Calm Guidance (AI on Watch)
-AI provides:
++ Instructions shown on:
 
-Relaxation exercises
+  + OLED display (simple directions)
 
-Simple calming instructions
+## 4. 🧘 Calm Guidance (AI on Watch)
++ AI provides:
 
-Displayed directly on the watch
+  + Relaxation exercises
 
-🔁 Full Hardware Flow
-Sensors (MAX30102 + GSR) collect real-time data
+  + Simple calming instructions
 
-GPS tracks user location
+  + Displayed directly on the watch
 
-ESP32 processes all inputs
+## 🔁 Full Hardware Flow
++ Sensors (MAX30102 + GSR) collect real-time data
 
-If abnormal condition detected:
++ GPS tracks user location
 
-Data sent to AI (Groq)
++ ESP32 processes all inputs
 
-AI evaluates situation
++ If abnormal condition detected:
 
-System triggers:
+  + Data sent to AI (Groq)
 
-📞 Call (Twilio)
+  + AI evaluates situation
+
++ System triggers:
+
+## 📞 Call (Twilio)
 
 💬 WhatsApp alert (Twilio)
 
@@ -146,7 +156,7 @@ System triggers:
 
 🧘 Relaxation support
 
-🎯 Key Capabilities
+## 🎯 Key Capabilities
 ✅ Real-time health monitoring
 
 ✅ Stress + panic detection
