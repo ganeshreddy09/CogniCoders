@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Select Role</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body class="bg-gray-900 flex items-center justify-center min-h-screen text-white">
+
+<div class="bg-gray-800 p-8 rounded-xl w-96 text-center">
+  <h2 class="text-2xl mb-6">Select Your Role</h2>
+
+  <select id="roleSelect" class="w-full p-2 rounded text-black mb-4">
+    <option value="">-- Choose Role --</option>
+    <option value="patient">Patient</option>
+    <option value="caregiver">Caregiver</option>
+    <option value="doctor">Doctor</option>
+  </select>
+
+  <button id="continueBtn" class="bg-blue-600 w-full py-2 rounded">
+    Continue
+  </button>
+</div>
+
+<script>
+const { createClient } = supabase;
+
+const sb = createClient(
+  "https://bmybtwrgosqxfvwkytui.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJteWJ0d3Jnb3NxeGZ2d2t5dHVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MDgzNjYsImV4cCI6MjA5MTI4NDM2Nn0.T9gQN6E950yklyLpSxkpCFkNjavi8jaNn4YscHY712w"
+);
+
+
+// ✅ SAVE ROLE + REDIRECT
+document.getElementById("continueBtn").onclick = async () => {
+
+  const role = document.getElementById("roleSelect").value;
+
+  if (!role) {
+    alert("Please select role");
+    return;
+  }
+
+
+  // ✅ REDIRECT
+  if (role === "doctor") {
+    window.location.href = "doctor.html";
+  } 
+  else if (role === "caregiver") {
+    window.location.href = "caretaker-dashboard.html";
+  } 
+  else {
+    window.location.href = "index.html";
+  }
+};
+</script>
+
+</body>
+</html>

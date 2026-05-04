@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<title>Asha — CogniCare Companion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0f;
+  --surface:rgba(255,255,255,0.055);
+  --border:rgba(255,255,255,0.10);
+  --text:#f5f5f7;
+  --muted:rgba(245,245,247,0.45);
+  --purple:#bf5af2;
+  --purple-dim:rgba(191,90,242,0.15);
+  --purple-glow:rgba(191,90,242,0.35);
+  --blue:#0a84ff;
+  --green:#30d158;
+  --red:#ff453a;
+  --pink:#ff375f;
+}
+
+html,body{
+  height:100%;
+  background:var(--bg);
+  color:var(--text);
+  font-family:'DM Sans',system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  overflow:hidden;
+}
+
+/* Ambient background */
+body::before{
+  content:'';
+  position:fixed;inset:0;z-index:0;
+  background:
+    radial-gradient(ellipse 70% 60% at 30% 20%, rgba(191,90,242,0.10) 0%, transparent 65%),
+    radial-gradient(ellipse 50% 50% at 75% 80%, rgba(10,132,255,0.08) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 40% at 50% 50%, rgba(255,55,95,0.05) 0%, transparent 70%);
+  pointer-events:none;
+  animation:bgBreath 10s ease-in-out infinite alternate;
+}
+@keyframes bgBreath{from{opacity:.5}to{opacity:1}}
+
+/* ── LAYOUT ── */
+.shell{
+  position:relative;z-index:1;
+  height:100vh;
+  display:flex;flex-direction:column;
+  max-width:480px;
+  margin:0 auto;
+  padding: env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0);
+}
+
+/* ── HEADER ── */
+.header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 20px 12px;
+  flex-shrink:0;
+}
+.header-left{display:flex;align-items:center;gap:10px}
+.asha-avatar{
+  width:40px;height:40px;border-radius:50%;
+  background:linear-gradient(135deg,var(--purple),var(--pink));
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;
+  box-shadow:0 0 16px rgba(191,90,242,0.4);
+  flex-shrink:0;
+  position:relative;
+}
+.asha-avatar-ring{
+  position:absolute;inset:-3px;border-radius:50%;
+  border:1.5px solid rgba(191,90,242,0.4);
+  animation:ringPulse 2.5s ease-in-out infinite;
+}
+@keyframes ringPulse{0%,100%{transform:scale(1);opacity:.5}50%{transform:scale(1.08);opacity:1}}
+.header-title{font-size:16px;font-weight:600;letter-spacing:-.02em}
+.header-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.status-dot{
+  width:8px;height:8px;border-radius:50%;
+  background:var(--muted);flex-shrink:0;
+  transition:background .4s;
+}
+.status-dot.listening{background:var(--purple);box-shadow:0 0 8px var(--purple);animation:dotPulse 1s ease-in-out infinite}
+.status-dot.speaking{background:var(--green);box-shadow:0 0 8px var(--green);animation:dotPulse .7s ease-in-out infinite}
+.status-dot.thinking{background:var(--blue);box-shadow:0 0 8px var(--blue);animation:dotPulse 1.2s ease-in-out infinite}
+.status-dot.idle{background:var(--green);box-shadow:0 0 6px var(--green)}
+@keyframes dotPulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* Language pill */
+.lang-pill{
+  display:flex;align-items:center;gap:4px;
+  padding:5px 12px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:40px;
+  font-size:11px;font-weight:500;
+  color:var(--muted);
+  cursor:pointer;
+  transition:background .18s,border-color .2s;
+  position:relative;
+}
+.lang-pill:hover{background:rgba(255,255,255,.1);border-color:rgba(191,90,242,.4)}
+.lang-flag{font-size:14px}
+
+/* Language dropdown */
+.lang-dropdown{
+  position:absolute;top:calc(100% + 6px);right:0;
+  background:#0f0f1a;
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:6px;
+  min-width:170px;
+  z-index:50;
+  display:none;
+  animation:fadeDown .18s ease;
+  box-shadow:0 8px 32px rgba(0,0,0,.6);
+}
+@keyframes fadeDown{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.lang-dropdown.open{display:block}
+.lang-opt{
+  display:flex;align-items:center;gap:9px;
+  padding:9px 12px;border-radius:9px;
+  cursor:pointer;transition:background .14s;
+  font-size:13px;font-weight:400;
+}
+.lang-opt:hover{background:rgba(255,255,255,.07)}
+.lang-opt.active{background:rgba(191,90,242,.12);color:var(--purple)}
+.lang-opt-flag{font-size:16px}
+
+/* ── CHAT WINDOW ── */
+.chat-wrap{
+  flex:1;
+  overflow-y:auto;
+  padding:8px 16px 12px;
+  display:flex;flex-direction:column;
+  gap:10px;
+  scroll-behavior:smooth;
+}
+.chat-wrap::-webkit-scrollbar{width:3px}
+.chat-wrap::-webkit-scrollbar-track{background:transparent}
+.chat-wrap::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:2px}
+
+/* Messages */
+.msg{display:flex;gap:8px;align-items:flex-end;max-width:86%}
+.msg.asha{align-self:flex-start}
+.msg.user{align-self:flex-end;flex-direction:row-reverse}
+
+.msg-avatar{
+  width:26px;height:26px;border-radius:50%;
+  background:linear-gradient(135deg,var(--purple),var(--pink));
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;flex-shrink:0;
+}
+
+.bubble{
+  padding:10px 14px;
+  border-radius:18px;
+  font-size:14px;
+  line-height:1.55;
+}
+.msg.asha .bubble{
+  background:rgba(191,90,242,0.12);
+  border:1px solid rgba(191,90,242,0.22);
+  color:var(--text);
+  border-bottom-left-radius:5px;
+}
+.msg.user .bubble{
+  background:rgba(10,132,255,.85);
+  color:#fff;
+  border-bottom-right-radius:5px;
+}
+
+.msg-time{font-size:10px;color:var(--muted);padding:0 2px 2px;white-space:nowrap}
+
+/* Typing */
+.typing-wrap{display:flex;gap:8px;align-items:flex-end;align-self:flex-start}
+.typing-bubble{
+  padding:12px 16px;
+  background:rgba(191,90,242,.12);
+  border:1px solid rgba(191,90,242,.22);
+  border-radius:18px 18px 18px 5px;
+  display:flex;gap:5px;align-items:center;
+}
+.td{width:6px;height:6px;border-radius:50%;background:var(--purple);opacity:.5;animation:tb 1.2s ease-in-out infinite}
+.td:nth-child(2){animation-delay:.2s}
+.td:nth-child(3){animation-delay:.4s}
+@keyframes tb{0%,60%,100%{transform:translateY(0);opacity:.5}30%{transform:translateY(-5px);opacity:1}}
+
+/* Speak-aloud button on asha bubbles */
+.bubble-row{display:flex;flex-direction:column;gap:4px}
+.speak-btn{
+  align-self:flex-start;
+  display:flex;align-items:center;gap:4px;
+  padding:4px 10px;
+  background:rgba(191,90,242,.1);
+  border:1px solid rgba(191,90,242,.2);
+  border-radius:20px;
+  font-size:11px;color:rgba(191,90,242,.8);
+  cursor:pointer;transition:background .15s;
+  font-family:'DM Sans',sans-serif;
+}
+.speak-btn:hover{background:rgba(191,90,242,.2)}
+
+/* ── VISUALIZER ── */
+.viz-wrap{
+  flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  height:72px;
+  padding:0 24px;
+  gap:3px;
+}
+.viz-bar{
+  width:3px;border-radius:3px;
+  background:var(--purple);
+  opacity:.35;
+  transition:height .12s ease,opacity .12s ease;
+  min-height:4px;
+}
+.viz-wrap.active .viz-bar{opacity:1}
+
+/* ── STATUS TEXT ── */
+.status-text{
+  text-align:center;
+  font-size:12px;
+  color:var(--muted);
+  padding:4px 0 8px;
+  min-height:24px;
+  transition:color .3s;
+}
+.status-text.listening{color:var(--purple)}
+.status-text.speaking{color:var(--green)}
+.status-text.thinking{color:var(--blue)}
+
+/* ── MIC BUTTON ── */
+.mic-area{
+  flex-shrink:0;
+  display:flex;flex-direction:column;
+  align-items:center;
+  gap:10px;
+  padding:0 20px 20px;
+}
+
+.mic-outer{
+  width:76px;height:76px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  position:relative;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+/* Ripple rings */
+.mic-ring{
+  position:absolute;inset:0;border-radius:50%;
+  border:1.5px solid var(--purple);
+  opacity:0;
+  animation:none;
+}
+.mic-outer.listening .mic-ring:nth-child(1){animation:ripple 1.6s ease-out infinite}
+.mic-outer.listening .mic-ring:nth-child(2){animation:ripple 1.6s ease-out .4s infinite}
+.mic-outer.listening .mic-ring:nth-child(3){animation:ripple 1.6s ease-out .8s infinite}
+@keyframes ripple{0%{transform:scale(1);opacity:.7}100%{transform:scale(2.2);opacity:0}}
+
+.mic-btn{
+  width:64px;height:64px;border-radius:50%;
+  background:var(--purple-dim);
+  border:1.5px solid var(--purple-glow);
+  display:flex;align-items:center;justify-content:center;
+  font-size:26px;
+  transition:background .2s,transform .15s,box-shadow .2s;
+  position:relative;z-index:1;
+  user-select:none;
+}
+.mic-outer:active .mic-btn{transform:scale(.93)}
+.mic-outer.listening .mic-btn{
+  background:rgba(191,90,242,.3);
+  box-shadow:0 0 24px rgba(191,90,242,.5);
+}
+.mic-outer.speaking .mic-btn{
+  background:rgba(48,209,88,.15);
+  border-color:rgba(48,209,88,.4);
+  box-shadow:0 0 20px rgba(48,209,88,.35);
+}
+
+/* Type bar */
+.type-row{
+  display:flex;align-items:center;gap:8px;
+  width:100%;
+  background:rgba(255,255,255,.06);
+  border:1px solid var(--border);
+  border-radius:40px;
+  padding:7px 7px 7px 16px;
+  backdrop-filter:blur(16px);
+}
+.type-input{
+  flex:1;background:transparent;border:none;outline:none;
+  font-size:14px;color:var(--text);font-family:'DM Sans',sans-serif;
+}
+.type-input::placeholder{color:var(--muted)}
+.send-btn{
+  width:34px;height:34px;border-radius:50%;
+  background:var(--purple);border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-size:15px;transition:transform .15s,opacity .15s;flex-shrink:0;
+}
+.send-btn:active{transform:scale(.9);opacity:.8}
+
+/* Server config */
+.server-row{
+  display:flex;align-items:center;gap:6px;
+  width:100%;
+  padding:0 4px 2px;
+}
+.server-input{
+  flex:1;background:rgba(255,255,255,.04);
+  border:1px solid var(--border);
+  border-radius:10px;padding:7px 12px;
+  font-size:11px;color:var(--text);
+  font-family:'DM Sans',sans-serif;outline:none;
+}
+.server-input:focus{border-color:rgba(191,90,242,.4)}
+.server-dot{
+  width:8px;height:8px;border-radius:50%;
+  background:var(--red);flex-shrink:0;
+  transition:background .3s;
+}
+.server-dot.ok{background:var(--green);box-shadow:0 0 6px var(--green)}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="asha-avatar">
+        <div class="asha-avatar-ring"></div>
+        🤖
+      </div>
+      <div>
+        <div class="header-title">Asha</div>
+        <div class="header-sub" id="headerSub">Your caring companion</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="status-dot idle" id="statusDot"></div>
+      <!-- Language selector -->
+      <div class="lang-pill" id="langPill" onclick="toggleLangDropdown()">
+        <span class="lang-flag" id="langFlag">🌐</span>
+        <span id="langCode">EN</span>
+        <span style="font-size:9px;margin-left:1px">▾</span>
+        <div class="lang-dropdown" id="langDropdown">
+          <!-- populated by JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chat -->
+  <div class="chat-wrap" id="chatWrap"></div>
+
+  <!-- Voice visualizer -->
+  <div class="viz-wrap" id="vizWrap">
+    <!-- bars populated by JS -->
+  </div>
+
+  <!-- Status text -->
+  <div class="status-text" id="statusText">Tap the mic to talk with Asha</div>
+
+  <!-- Mic + type -->
+  <div class="mic-area">
+    <!-- Mic -->
+    <div class="mic-outer" id="micOuter" onclick="toggleListening()">
+      <div class="mic-ring"></div>
+      <div class="mic-ring"></div>
+      <div class="mic-ring"></div>
+      <div class="mic-btn" id="micBtn">🎤</div>
+    </div>
+
+    <!-- Type row -->
+    <div class="type-row">
+      <input class="type-input" id="typeInput" placeholder="Or type a message…" onkeydown="if(event.key==='Enter')sendTyped()"/>
+      <button class="send-btn" onclick="sendTyped()">➤</button>
+    </div>
+
+    <!-- Server config -->
+    <div class="server-row">
+      <div class="server-dot" id="serverDot"></div>
+      <input class="server-input" id="serverUrl" value="http://localhost:8000" placeholder="Backend URL (http://localhost:8000)"/>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════
+   LANGUAGES
+══════════════════════════════════════════════════════ */
+const LANGS = [
+  { code:'en-IN', label:'English',    flag:'🇬🇧', short:'EN' },
+  { code:'ta-IN', label:'Tamil',      flag:'🇮🇳', short:'TA' },
+  { code:'hi-IN', label:'Hindi',      flag:'🇮🇳', short:'HI' },
+  { code:'te-IN', label:'Telugu',     flag:'🇮🇳', short:'TE' },
+  { code:'ml-IN', label:'Malayalam',  flag:'🇮🇳', short:'ML' },
+  { code:'kn-IN', label:'Kannada',    flag:'🇮🇳', short:'KA' },
+  { code:'bn-IN', label:'Bengali',    flag:'🇮🇳', short:'BN' },
+  { code:'mr-IN', label:'Marathi',    flag:'🇮🇳', short:'MR' },
+  { code:'gu-IN', label:'Gujarati',   flag:'🇮🇳', short:'GU' },
+  { code:'fr-FR', label:'French',     flag:'🇫🇷', short:'FR' },
+  { code:'ar-SA', label:'Arabic',     flag:'🇸🇦', short:'AR' },
+  { code:'zh-CN', label:'Chinese',    flag:'🇨🇳', short:'ZH' },
+  { code:'ja-JP', label:'Japanese',   flag:'🇯🇵', short:'JA' },
+];
+
+let currentLang = LANGS[0];
+
+function buildLangDropdown(){
+  const dd = document.getElementById('langDropdown');
+  dd.innerHTML = LANGS.map(l=>`
+    <div class="lang-opt${l.code===currentLang.code?' active':''}" onclick="selectLang('${l.code}',event)">
+      <span class="lang-opt-flag">${l.flag}</span>
+      <span>${l.label}</span>
+    </div>`).join('');
+}
+buildLangDropdown();
+
+function toggleLangDropdown(){
+  document.getElementById('langDropdown').classList.toggle('open');
+}
+function selectLang(code, e){
+  e && e.stopPropagation();
+  currentLang = LANGS.find(l=>l.code===code)||LANGS[0];
+  document.getElementById('langFlag').textContent = currentLang.flag;
+  document.getElementById('langCode').textContent = currentLang.short;
+  buildLangDropdown();
+  document.getElementById('langDropdown').classList.remove('open');
+  // Cancel any ongoing speech and recognition
+  stopSpeaking();
+  if(recognition && isListening) recognition.stop();
+}
+
+// Close dropdown on outside click
+document.addEventListener('click', e=>{
+  if(!document.getElementById('langPill').contains(e.target)){
+    document.getElementById('langDropdown').classList.remove('open');
+  }
+});
+
+/* ══════════════════════════════════════════════════════
+   VISUALIZER BARS
+══════════════════════════════════════════════════════ */
+const BAR_COUNT = 24;
+const vizWrap = document.getElementById('vizWrap');
+const bars = [];
+for(let i=0;i<BAR_COUNT;i++){
+  const b = document.createElement('div');
+  b.className = 'viz-bar';
+  b.style.height = '4px';
+  vizWrap.appendChild(b);
+  bars.push(b);
+}
+
+let vizAnim = null;
+function animateViz(mode){
+  cancelAnimationFrame(vizAnim);
+  vizWrap.classList.toggle('active', mode!=='idle');
+  if(mode==='idle'){ bars.forEach(b=>{ b.style.height='4px'; }); return; }
+
+  function frame(){
+    bars.forEach((b,i)=>{
+      let h;
+      if(mode==='listening'){
+        h = 4 + Math.random()*40;
+      } else if(mode==='speaking'){
+        const t = Date.now()/300;
+        h = 8 + Math.abs(Math.sin(t + i*0.4))*36;
+      } else {
+        h = 4 + Math.abs(Math.sin(Date.now()/600 + i*0.3))*14;
+      }
+      b.style.height = h+'px';
+    });
+    vizAnim = requestAnimationFrame(frame);
+  }
+  frame();
+}
+
+/* ══════════════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════════════ */
+let conversationHistory = [];
+let isListening = false;
+let isSpeaking = false;
+let recognition = null;
+let currentUtterance = null;
+
+/* ══════════════════════════════════════════════════════
+   UI HELPERS
+══════════════════════════════════════════════════════ */
+function setStatus(mode, text){
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  const micOuter = document.getElementById('micOuter');
+  const micBtn = document.getElementById('micBtn');
+  const sub = document.getElementById('headerSub');
+
+  dot.className = 'status-dot ' + mode;
+  txt.className = 'status-text ' + mode;
+  txt.textContent = text;
+  micOuter.className = 'mic-outer ' + mode;
+
+  if(mode==='listening'){ micBtn.textContent='🛑'; sub.textContent='Listening…'; }
+  else if(mode==='speaking'){ micBtn.textContent='🔊'; sub.textContent='Speaking…'; }
+  else if(mode==='thinking'){ micBtn.textContent='⏳'; sub.textContent='Thinking…'; }
+  else { micBtn.textContent='🎤'; sub.textContent='Your caring companion'; }
+
+  animateViz(mode==='idle'?'idle':mode);
+}
+
+function getTime(){
+  const n=new Date();
+  return n.getHours().toString().padStart(2,'0')+':'+n.getMinutes().toString().padStart(2,'0');
+}
+
+function appendMsg(text, sender){
+  const cw = document.getElementById('chatWrap');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg ' + sender;
+
+  if(sender==='asha'){
+    wrap.innerHTML = `
+      <div class="msg-avatar">A</div>
+      <div class="bubble-row">
+        <div class="bubble">${text}</div>
+        <div class="speak-btn" onclick="speakText(${JSON.stringify(text)})">🔊 Play</div>
+        <div class="msg-time">${getTime()}</div>
+      </div>`;
+  } else {
+    wrap.innerHTML = `
+      <div class="bubble-row" style="align-items:flex-end">
+        <div class="bubble">${text}</div>
+        <div class="msg-time" style="text-align:right">${getTime()}</div>
+      </div>`;
+  }
+  cw.appendChild(wrap);
+  cw.scrollTop = cw.scrollHeight;
+}
+
+function showTyping(){
+  const cw = document.getElementById('chatWrap');
+  const d = document.createElement('div');
+  d.className = 'typing-wrap'; d.id = 'typingIndicator';
+  d.innerHTML = `
+    <div class="msg-avatar">A</div>
+    <div class="typing-bubble"><div class="td"></div><div class="td"></div><div class="td"></div></div>`;
+  cw.appendChild(d);
+  cw.scrollTop = cw.scrollHeight;
+}
+
+function removeTyping(){
+  const t = document.getElementById('typingIndicator');
+  if(t) t.remove();
+}
+
+/* ══════════════════════════════════════════════════════
+   SERVER PING
+══════════════════════════════════════════════════════ */
+async function pingServer(){
+  const url = document.getElementById('serverUrl').value.trim();
+  try{
+    const r = await fetch(url+'/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:'ping'}]}), signal:AbortSignal.timeout(3000)});
+    document.getElementById('serverDot').className = r.ok ? 'server-dot ok' : 'server-dot';
+  }catch(e){
+    document.getElementById('serverDot').className = 'server-dot';
+  }
+}
+setInterval(pingServer, 5000);
+setTimeout(pingServer, 800);
+
+/* ══════════════════════════════════════════════════════
+   SEND TO BACKEND
+══════════════════════════════════════════════════════ */
+async function askAsha(userText){
+  conversationHistory.push({ role:'user', content: userText });
+  setStatus('thinking','Asha is thinking…');
+  showTyping();
+
+  const url = document.getElementById('serverUrl').value.trim() || 'http://localhost:8000';
+
+  try{
+    const resp = await fetch(url+'/chat', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ messages: conversationHistory })
+    });
+    if(!resp.ok) throw new Error(`Server error ${resp.status}`);
+    const data = await resp.json();
+    const reply = data.reply || 'Sorry, I didn\'t get a response.';
+
+    conversationHistory.push({ role:'assistant', content: reply });
+    removeTyping();
+    appendMsg(reply, 'asha');
+    speakText(reply);
+  } catch(err){
+    removeTyping();
+    const errMsg = 'Sorry, I couldn\'t connect to the server right now. Is it running?';
+    appendMsg(errMsg, 'asha');
+    speakText(errMsg);
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   TEXT-TO-SPEECH
+══════════════════════════════════════════════════════ */
+function stopSpeaking(){
+  window.speechSynthesis.cancel();
+  isSpeaking = false;
+}
+
+function speakText(text){
+  if(!window.speechSynthesis){ console.warn('TTS not supported'); return; }
+  stopSpeaking();
+
+  const clean = text.replace(/<[^>]*>/g,'');
+  const utter = new SpeechSynthesisUtterance(clean);
+  utter.lang = currentLang.code;
+  utter.rate = 0.92;
+  utter.pitch = 1.05;
+
+  // Try to find a voice matching the language
+  const voices = window.speechSynthesis.getVoices();
+  const match = voices.find(v=>v.lang===currentLang.code)
+              || voices.find(v=>v.lang.startsWith(currentLang.code.split('-')[0]))
+              || voices.find(v=>v.default);
+  if(match) utter.voice = match;
+
+  currentUtterance = utter;
+  isSpeaking = true;
+  setStatus('speaking', 'Asha is speaking…');
+
+  utter.onend = ()=>{
+    isSpeaking = false;
+    setStatus('idle', 'Tap the mic to talk with Asha');
+  };
+  utter.onerror = ()=>{
+    isSpeaking = false;
+    setStatus('idle', 'Tap the mic to talk with Asha');
+  };
+
+  window.speechSynthesis.speak(utter);
+}
+
+// Voices load asynchronously in some browsers
+window.speechSynthesis.onvoiceschanged = ()=>{ window.speechSynthesis.getVoices(); };
+
+/* ══════════════════════════════════════════════════════
+   SPEECH RECOGNITION
+══════════════════════════════════════════════════════ */
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+function buildRecognition(){
+  if(!SpeechRecognition){ return null; }
+  const r = new SpeechRecognition();
+  r.continuous = false;
+  r.interimResults = true;
+  r.lang = currentLang.code;
+  r.maxAlternatives = 1;
+
+  r.onstart = ()=>{
+    isListening = true;
+    setStatus('listening', 'Listening… speak now');
+  };
+
+  r.onresult = (e)=>{
+    let interim = '', final = '';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      const t = e.results[i][0].transcript;
+      if(e.results[i].isFinal) final += t;
+      else interim += t;
+    }
+    // Show interim in status
+    if(interim) document.getElementById('statusText').textContent = interim;
+    if(final){
+      document.getElementById('statusText').textContent = final;
+      handleUserInput(final.trim());
+    }
+  };
+
+  r.onerror = (e)=>{
+    isListening = false;
+    const msgs = {
+      'no-speech':'No speech detected. Tap mic to try again.',
+      'audio-capture':'Microphone not found.',
+      'not-allowed':'Microphone permission denied.',
+      'network':'Network error during recognition.',
+    };
+    setStatus('idle', msgs[e.error]||'Error: '+e.error);
+  };
+
+  r.onend = ()=>{
+    isListening = false;
+    if(!isSpeaking) setStatus('idle','Tap the mic to talk with Asha');
+  };
+
+  return r;
+}
+
+function toggleListening(){
+  // If speaking, stop speech first
+  if(isSpeaking){ stopSpeaking(); return; }
+
+  if(!SpeechRecognition){
+    alert('Voice recognition is not supported in this browser.\nTry Chrome or Edge on Android/Desktop.');
+    return;
+  }
+
+  if(isListening){
+    recognition && recognition.stop();
+    return;
+  }
+
+  // Rebuild recognition each time so lang updates apply
+  recognition = buildRecognition();
+  if(!recognition) return;
+  recognition.lang = currentLang.code;
+
+  try{
+    recognition.start();
+  } catch(e){
+    setStatus('idle','Could not start microphone.');
+  }
+}
+
+function handleUserInput(text){
+  if(!text) return;
+  appendMsg(text, 'user');
+  askAsha(text);
+}
+
+/* ══════════════════════════════════════════════════════
+   TYPED INPUT
+══════════════════════════════════════════════════════ */
+function sendTyped(){
+  const inp = document.getElementById('typeInput');
+  const text = inp.value.trim();
+  if(!text) return;
+  inp.value = '';
+  handleUserInput(text);
+}
+
+/* ══════════════════════════════════════════════════════
+   INIT GREETING
+══════════════════════════════════════════════════════ */
+window.addEventListener('load', ()=>{
+  // Greet in chosen language
+  const greetings = {
+    'en-IN': "Hello! I'm Asha. I'm here for you anytime you need me. How are you feeling today?",
+    'ta-IN': "வணக்கம்! நான் ஆஷா. நீங்கள் எப்போது வேண்டுமானாலும் என்னை அழைக்கலாம். இன்று நலமாக இருக்கிறீர்களா?",
+    'hi-IN': "नमस्ते! मैं आशा हूँ। मैं हमेशा आपके साथ हूँ। आज आप कैसा महसूस कर रहे हैं?",
+    'te-IN': "నమస్కారం! నేను ఆశ. మీకు ఎప్పుడు అవసరమైనా నేను ఇక్కడ ఉన్నాను. ఈరోజు ఎలా ఉన్నారు?",
+    'ml-IN': "ഹലോ! ഞാൻ ആശ. നിങ്ങൾക്ക് ആവശ്യമുള്ളപ്പോഴെല്ലാം ഞാൻ ഇവിടെ ഉണ്ട്. ഇന്ന് സുഖമാണോ?",
+  };
+  const greeting = greetings[currentLang.code] || greetings['en-IN'];
+  setTimeout(()=>{
+    appendMsg(greeting,'asha');
+    setTimeout(()=>speakText(greeting), 400);
+  }, 600);
+});
+</script>
+</body>
+</html>

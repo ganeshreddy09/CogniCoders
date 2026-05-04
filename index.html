@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cognicare — AI Cognitive Rehabilitation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #080810;
+  --cream: #f2ede6;
+  --fog: #b8bcc8;
+  --iris: #7b6fff;
+}
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--ink);
+  color: var(--cream);
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 300;
+  overflow-x: hidden;
+  cursor: none;
+}
+#cursor {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--iris);
+  position: fixed;
+  top: 0; left: 0;
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate(-50%,-50%);
+  transition: width 0.25s ease, height 0.25s ease, background 0.25s ease;
+  mix-blend-mode: screen;
+}
+#cursor.expand { width: 52px; height: 52px; background: rgba(123,111,255,0.3); }
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 900;
+  opacity: 0.55;
+}
+/* NAV */
+nav {
+  position: fixed; top: 0; left: 0; right: 0;
+  padding: 30px 64px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 500;
+}
+nav::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(to bottom, rgba(8,8,16,0.92) 0%, transparent 100%);
+  pointer-events: none;
+  z-index: -1;
+}
+.nav-logo {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px; font-weight: 400;
+  letter-spacing: 0.06em;
+  color: var(--cream);
+  text-decoration: none;
+}
+.nav-logo span { color: var(--iris); }
+.nav-links { display: flex; gap: 38px; list-style: none; }
+.nav-links a {
+  font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--fog);
+  text-decoration: none; transition: color 0.3s;
+}
+.nav-links a:hover { color: var(--cream); }
+.nav-cta {
+  font-size: 11px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--ink);
+  background: var(--cream);
+  padding: 11px 26px; border-radius: 2px;
+  text-decoration: none; transition: background 0.3s, color 0.3s;
+}
+.nav-cta:hover { background: var(--iris); color: #fff; }
+
+/* HERO */
+.hero {
+  height: 100vh;
+  display: flex; flex-direction: column;
+  justify-content: flex-end;
+  padding: 0 64px 80px;
+  position: relative; overflow: hidden;
+}
+.aurora {
+  position: absolute;
+  width: 960px; height: 960px; border-radius: 50%;
+  background: radial-gradient(ellipse at 40% 50%, rgba(123,111,255,0.16) 0%, rgba(70,40,180,0.05) 50%, transparent 70%);
+  top: -240px; left: -220px;
+  animation: drift 16s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+.aurora2 {
+  position: absolute;
+  width: 640px; height: 640px; border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(80,200,160,0.06) 0%, transparent 65%);
+  bottom: -80px; right: -120px;
+  animation: drift2 20s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+@keyframes drift  { from { transform: translate(0,0) scale(1); } to { transform: translate(70px,50px) scale(1.1); } }
+@keyframes drift2 { from { transform: translate(0,0); } to { transform: translate(-50px,-30px) rotate(12deg); } }
+.hero-line {
+  position: absolute; top: 50%; left: 64px; right: 64px; height: 1px;
+  background: linear-gradient(to right, transparent, rgba(255,255,255,0.05) 30%, rgba(255,255,255,0.05) 70%, transparent);
+}
+.hero-eyebrow {
+  font-size: 11px; letter-spacing: 0.22em;
+  text-transform: uppercase; color: var(--iris);
+  margin-bottom: 28px;
+  opacity: 0; animation: fadeUp 1s 0.3s forwards;
+}
+.hero-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(70px, 9.5vw, 134px);
+  font-weight: 300; line-height: 0.92;
+  letter-spacing: -0.02em; max-width: 960px;
+  opacity: 0; animation: fadeUp 1s 0.5s forwards;
+}
+.hero-title em { font-style: italic; color: var(--fog); }
+.hero-sub-row {
+  display: flex; align-items: flex-end;
+  justify-content: space-between;
+  margin-top: 64px;
+  opacity: 0; animation: fadeUp 1s 0.8s forwards;
+}
+.hero-desc { font-size: 14px; line-height: 1.85; color: var(--fog); max-width: 360px; }
+.hero-buttons { display: flex; gap: 18px; align-items: center; }
+.btn-primary {
+  font-size: 11px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--ink);
+  background: var(--cream);
+  padding: 14px 34px; border-radius: 2px;
+  text-decoration: none; transition: background 0.3s, color 0.3s;
+}
+.btn-primary:hover { background: var(--iris); color: #fff; }
+.btn-ghost {
+  font-size: 11px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--fog);
+  padding: 14px 0; text-decoration: none;
+  border-bottom: 1px solid rgba(184,188,200,0.3);
+  transition: color 0.3s, border-color 0.3s;
+}
+.btn-ghost:hover { color: var(--cream); border-color: var(--cream); }
+.scroll-hint {
+  position: absolute; bottom: 44px; right: 64px;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  opacity: 0; animation: fadeUp 1s 1.2s forwards;
+}
+.scroll-hint span {
+  font-size: 10px; letter-spacing: 0.22em;
+  text-transform: uppercase; color: var(--fog);
+  writing-mode: vertical-rl;
+}
+.scroll-hint-line {
+  width: 1px; height: 56px;
+  background: linear-gradient(to bottom, rgba(184,188,200,0.5), transparent);
+  animation: spulse 2s ease-in-out infinite;
+}
+@keyframes spulse {
+  0%,100% { opacity: 0.3; } 50% { opacity: 1; }
+}
+@keyframes fadeUp {
+  from { opacity:0; transform: translateY(28px); }
+  to   { opacity:1; transform: translateY(0); }
+}
+
+/* MARQUEE */
+.marquee-strip {
+  border-top: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  padding: 18px 0; overflow: hidden;
+}
+.marquee-track {
+  display: flex; gap: 56px;
+  animation: marquee 24s linear infinite;
+  white-space: nowrap;
+}
+.marquee-track span {
+  font-size: 10px; letter-spacing: 0.22em;
+  text-transform: uppercase; color: var(--fog); flex-shrink: 0;
+}
+.marquee-track .dot { color: var(--iris); letter-spacing: 0; }
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+/* PHILOSOPHY */
+.section { padding: 130px 64px; }
+.section-eyebrow {
+  font-size: 10px; letter-spacing: 0.24em;
+  text-transform: uppercase; color: var(--iris); margin-bottom: 20px;
+}
+.section-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(40px, 5.5vw, 76px);
+  font-weight: 300; line-height: 1.08;
+  letter-spacing: -0.02em; max-width: 820px;
+  margin-bottom: 90px;
+}
+.section-title em { font-style: italic; color: var(--fog); }
+.phil-item {
+  display: grid;
+  grid-template-columns: 72px 1fr 1fr;
+  gap: 40px; align-items: start;
+  padding: 52px 0;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  opacity: 0; transform: translateY(36px);
+  transition: opacity 0.85s ease, transform 0.85s ease;
+}
+.phil-item.visible { opacity: 1; transform: translateY(0); }
+.phil-num {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 13px; color: var(--iris); letter-spacing: 0.08em; padding-top: 6px;
+}
+.phil-heading {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(26px, 3vw, 42px);
+  font-weight: 300; line-height: 1.18; letter-spacing: -0.01em;
+}
+.phil-heading em { font-style: italic; color: var(--fog); }
+.phil-body { font-size: 14px; color: var(--fog); line-height: 1.88; padding-top: 6px; }
+.phil-tag {
+  display: inline-block;
+  font-size: 9px; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--iris);
+  border: 1px solid rgba(123,111,255,0.3);
+  padding: 5px 14px; border-radius: 2px; margin-bottom: 16px;
+}
+
+/* STORY SCROLLJACK */
+.story-section { height: 400vh; position: relative; }
+.story-sticky {
+  position: sticky; top: 0; height: 100vh;
+  display: flex; overflow: hidden;
+}
+.story-left {
+  width: 55%; display: flex;
+  flex-direction: column; justify-content: center;
+  padding: 0 80px; position: relative;
+}
+.story-rail {
+  position: absolute; left: 0; top: 10%; bottom: 10%;
+  width: 1px; background: rgba(255,255,255,0.06);
+}
+.story-rail-fill {
+  position: absolute; left: 0; top: 0; width: 1px;
+  height: 0%; background: var(--iris); transition: height 0.05s linear;
+}
+.story-slide {
+  position: absolute;
+  left: 80px; right: 40px; top: 50%;
+  transform: translateY(calc(-50% + 28px));
+  opacity: 0; transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.story-slide.active { opacity: 1; transform: translateY(-50%); }
+.story-slide .s-label {
+  font-size: 10px; letter-spacing: 0.26em;
+  text-transform: uppercase; color: var(--iris);
+  margin-bottom: 28px; display: block;
+}
+.story-slide h2 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(36px, 4.5vw, 62px);
+  font-weight: 300; line-height: 1.12;
+  letter-spacing: -0.02em; margin-bottom: 24px;
+}
+.story-slide h2 em { font-style: italic; color: #a09bff; }
+.story-slide p { font-size: 14px; color: var(--fog); line-height: 1.88; max-width: 420px; }
+.story-right {
+  width: 45%; position: relative;
+  display: flex; align-items: center; justify-content: center;
+  border-left: 1px solid rgba(255,255,255,0.05);
+}
+.story-stat {
+  position: absolute; text-align: center;
+  opacity: 0; transform: scale(0.88);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.story-stat.active { opacity: 1; transform: scale(1); }
+.stat-big {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(88px, 12vw, 158px);
+  font-weight: 300; letter-spacing: -0.04em;
+  line-height: 1; color: var(--cream); display: block;
+}
+.stat-big sup {
+  font-size: 0.34em; color: var(--iris);
+  vertical-align: super; letter-spacing: 0;
+}
+.stat-cap {
+  font-size: 11px; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--fog);
+  margin-top: 20px; display: block;
+}
+.story-dots { position: absolute; bottom: 52px; left: 80px; display: flex; gap: 10px; }
+.story-dot {
+  width: 20px; height: 1px;
+  background: rgba(255,255,255,0.14);
+  transition: background 0.3s, width 0.3s;
+}
+.story-dot.active { width: 42px; background: var(--iris); }
+
+/* GAMES */
+.games-header {
+  padding: 110px 64px 56px;
+  display: flex; justify-content: space-between; align-items: flex-end;
+  border-top: 1px solid rgba(255,255,255,0.07);
+}
+.games-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(46px, 6vw, 86px);
+  font-weight: 300; letter-spacing: -0.02em; line-height: 1.0;
+}
+.games-title em { font-style: italic; color: var(--fog); }
+.games-sub { font-size: 13px; color: var(--fog); line-height: 1.75; max-width: 300px; text-align: right; }
+.cards-grid {
+  padding: 0 64px 130px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+}
+.game-card {
+  display: block; text-decoration: none; color: inherit;
+  position: relative; aspect-ratio: 3/4; overflow: hidden;
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.05);
+  cursor: none;
+}
+.cards-grid .game-card:nth-child(n+5) { aspect-ratio: 16/9; }
+.card-img {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: center;
+  transition: transform 0.8s cubic-bezier(0.25,0.46,0.45,0.94);
+  filter: brightness(0.38) saturate(0.5);
+}
+.game-card:hover .card-img { transform: scale(1.07); filter: brightness(0.52) saturate(0.75); }
+.card-content {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  justify-content: flex-end; padding: 26px;
+}
+.card-tag {
+  font-size: 9px; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--iris);
+  border: 1px solid rgba(123,111,255,0.35);
+  padding: 5px 12px; border-radius: 2px;
+  align-self: flex-start; margin-bottom: 12px;
+  background: rgba(8,8,16,0.6); backdrop-filter: blur(6px);
+}
+.card-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(20px, 2vw, 28px);
+  font-weight: 300; line-height: 1.2; letter-spacing: -0.01em; margin-bottom: 6px;
+}
+.card-desc {
+  font-size: 12px; color: rgba(184,188,200,0.65);
+  line-height: 1.72; max-height: 0;
+  overflow: hidden; transition: max-height 0.5s ease;
+}
+.game-card:hover .card-desc { max-height: 90px; }
+.card-arrow {
+  position: absolute; top: 22px; right: 22px;
+  font-size: 16px; color: rgba(255,255,255,0.25);
+  transition: color 0.3s, transform 0.3s;
+}
+.game-card:hover .card-arrow { color: var(--iris); transform: translate(4px,-4px); }
+
+/* FOOTER */
+footer {
+  padding: 76px 64px 50px;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  display: flex; justify-content: space-between; align-items: flex-end;
+}
+.footer-logo {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 36px; font-weight: 300; letter-spacing: -0.01em;
+}
+.footer-logo span { color: var(--iris); }
+.footer-copy { font-size: 11px; color: rgba(184,188,200,0.35); letter-spacing: 0.06em; }
+
+/* REVEAL */
+.reveal { opacity:0; transform:translateY(32px); transition: opacity 0.9s ease, transform 0.9s ease; }
+.reveal.visible { opacity:1; transform:translateY(0); }
+
+#auth-area button {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px; letter-spacing: 0.12em;
+  text-transform: uppercase; background: none;
+  border: 1px solid rgba(255,255,255,0.18);
+  color: var(--fog); padding: 9px 20px; border-radius: 2px;
+  cursor: none; transition: border-color 0.3s, color 0.3s;
+}
+#auth-area button:hover { border-color: var(--cream); color: var(--cream); }
+</style>
+</head>
+<body>
+
+<div id="cursor"></div>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">Cogni<span>care</span></a>
+  <ul class="nav-links">
+    <li><a href="#philosophy">Philosophy</a></li>
+    <li><a href="#story">Our Story</a></li>
+    <li><a href="#games">Games</a></li>
+    <li><a href="#">Research</a></li>
+    <li><a href="path.html">Dashboard</a></li>
+  </ul>
+  <div style="display:flex;gap:14px;align-items:center;">
+    <div id="auth-area"></div>
+    <a href="combine.html" class="nav-cta">Talk to ASHA</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="aurora"></div>
+  <div class="aurora2"></div>
+  <div class="hero-line"></div>
+
+  <p class="hero-eyebrow">AI · Cognitive Rehabilitation · Alzheimer's Care</p>
+
+  <h1 class="hero-title">
+    Born from<br><em>science,</em><br>built for<br>every mind.
+  </h1>
+
+  <div class="hero-sub-row">
+    <p class="hero-desc">
+      ASHA is an AI companion trained specifically for Alzheimer's care — present every moment, adapting to each patient, giving families peace of mind around the clock.
+    </p>
+    <div class="hero-buttons">
+      <a href="combine.html" class="btn-primary">Talk to ASHA</a>
+      <a href="#games" class="btn-ghost">Explore Games →</a>
+    </div>
+  </div>
+
+  <div class="scroll-hint">
+    <span>Scroll</span>
+    <div class="scroll-hint-line"></div>
+  </div>
+</section>
+
+<!-- MARQUEE -->
+<div class="marquee-strip">
+  <div class="marquee-track">
+    <span>Cognitive Rehabilitation</span><span class="dot"> ◆ </span>
+    <span>Memory Training</span><span class="dot"> ◆ </span>
+    <span>Alzheimer's Care</span><span class="dot"> ◆ </span>
+    <span>24 / 7 Availability</span><span class="dot"> ◆ </span>
+    <span>AI Companion</span><span class="dot"> ◆ </span>
+    <span>Science-Backed</span><span class="dot"> ◆ </span>
+    <span>Cognitive Rehabilitation</span><span class="dot"> ◆ </span>
+    <span>Memory Training</span><span class="dot"> ◆ </span>
+    <span>Alzheimer's Care</span><span class="dot"> ◆ </span>
+    <span>24 / 7 Availability</span><span class="dot"> ◆ </span>
+    <span>AI Companion</span><span class="dot"> ◆ </span>
+    <span>Science-Backed</span><span class="dot"> ◆ </span>
+  </div>
+</div>
+
+<!-- PHILOSOPHY -->
+<section class="section" id="philosophy">
+  <p class="section-eyebrow reveal">Our approach</p>
+  <h2 class="section-title reveal">We go back to <em>basics.</em><br>Only what the mind truly needs.</h2>
+
+  <div class="phil-item">
+    <span class="phil-num">01</span>
+    <div>
+      <span class="phil-tag">No shortcuts</span>
+      <h3 class="phil-heading">Care without<br><em>compromise.</em></h3>
+    </div>
+    <p class="phil-body">In a world of rushed diagnoses and understaffed wards, we choose depth over speed. Every interaction ASHA has is tailored — not templated. Not a chatbot. A companion that remembers.</p>
+  </div>
+
+  <div class="phil-item">
+    <span class="phil-num">02</span>
+    <div>
+      <span class="phil-tag">Research-led</span>
+      <h3 class="phil-heading">Stimulation that<br><em>actually works.</em></h3>
+    </div>
+    <p class="phil-body">Every game, every exercise is drawn from peer-reviewed cognitive science. Sequence memory, reminiscence therapy, motor coordination — proven methods, delivered beautifully.</p>
+  </div>
+
+  <div class="phil-item">
+    <span class="phil-num">03</span>
+    <div>
+      <span class="phil-tag">Always present</span>
+      <h3 class="phil-heading">The other<br><em>165 hours.</em></h3>
+    </div>
+    <p class="phil-body">Specialists give a few hours a week. We fill the silence. Every hour between appointments, ASHA is there — consistent, patient, and adaptive to each individual's pace and history.</p>
+  </div>
+</section>
+
+<!-- STORY SCROLLJACK -->
+<section class="story-section" id="story">
+  <div class="story-sticky">
+    <div class="story-left" id="story-left">
+      <div class="story-rail"><div class="story-rail-fill" id="story-rail-fill"></div></div>
+
+      <div class="story-slide active" data-step="0">
+        <span class="s-label">The reality</span>
+        <h2>55 million people live with <em>dementia</em> today.</h2>
+        <p>Growing faster than any healthcare system can respond. Care is scarce. Attention is rationed. Families are left guessing in the dark.</p>
+      </div>
+      <div class="story-slide" data-step="1">
+        <span class="s-label">The gap</span>
+        <h2>Most only get <em>a few hours</em> of specialist care per week.</h2>
+        <p>The other 165 hours — patients are without structured cognitive support. That's where decline accelerates, quietly and unnoticed.</p>
+      </div>
+      <div class="story-slide" data-step="2">
+        <span class="s-label">The science</span>
+        <h2>Daily stimulation <em>slows</em> the progression measurably.</h2>
+        <p>Research shows consistent cognitive engagement — memory, sequencing, reminiscence — can delay decline and meaningfully improve quality of life.</p>
+      </div>
+      <div class="story-slide" data-step="3">
+        <span class="s-label">Our answer</span>
+        <h2>ASHA is here for <em>all 168 hours.</em></h2>
+        <p>An AI companion designed for Alzheimer's care. Adapting to each patient's pace, history, and needs — around the clock, without exception.</p>
+      </div>
+
+      <div class="story-dots" id="story-dots">
+        <div class="story-dot active"></div>
+        <div class="story-dot"></div>
+        <div class="story-dot"></div>
+        <div class="story-dot"></div>
+      </div>
+    </div>
+
+    <div class="story-right">
+      <div class="story-stat active" data-step="0">
+        <span class="stat-big">55<sup>M</sup></span>
+        <span class="stat-cap">people living with dementia worldwide</span>
+      </div>
+      <div class="story-stat" data-step="1">
+        <span class="stat-big">3<sup>hrs</sup></span>
+        <span class="stat-cap">of specialist care received per week, on average</span>
+      </div>
+      <div class="story-stat" data-step="2">
+        <span class="stat-big">32<sup>%</sup></span>
+        <span class="stat-cap">slower decline with daily cognitive stimulation</span>
+      </div>
+      <div class="story-stat" data-step="3">
+        <span class="stat-big">24<sup>/7</sup></span>
+        <span class="stat-cap">ASHA is here, every day, for every patient</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- GAMES -->
+<div class="games-header reveal" id="games">
+  <h2 class="games-title">Cognitive<br><em>Games.</em></h2>
+  <p class="games-sub">Eight science-backed exercises — designed not just to train the mind, but to genuinely delight it.</p>
+</div>
+
+<div class="cards-grid">
+  <a href="Simon_UI_Project/Home.html" class="game-card">
+    <div class="card-img" style="background-image:url('simon.png')"></div>
+    <div class="card-content">
+      <span class="card-tag">Sequence Memory</span>
+      <h3 class="card-title">Simon Says</h3>
+      <p class="card-desc">Working-memory sequence training shown to improve attention in older adults with MCI and early Alzheimer's.</p>
+    </div>
+    <span class="card-arrow">↗</span>
+  </a>
+  <a href="memory.html" class="game-card">
+    <div class="card-img" style="background-image:url('cards.jpg')"></div>
+    <div class="card-content">
+      <span class="card-tag">Memory</span>
+      <h3 class="card-title">Emoji Tiles</h3>
+      <p class="card-desc">Tile-matching to form new neural connections and strengthen recall in an engaging format.</p>
+    </div>
+    <span class="card-arrow">↗</span>
+  </a>
+  <a href="TimeCapsule_Game/Home.html" class="game-card">
+    <div class="card-img" style="background-image:url('memory.jpg')"></div>
+    <div class="card-content">
+      <span class="card-tag">Reminiscence</span>
+      <h3 class="card-title">Time Capsule</h3>
+      <p class="card-desc">A therapeutic journey preserving meaningful memories as a personal legacy as the disease progresses.</p>
+    </div>
+    <span class="card-arrow">↗</span>
+  </a>
+  <a href="Memorytray.html" class="game-card">
+    <div class="card-img" style="background-image:url('seq.jpg')"></div>
+    <div class="card-content">
+      <span class="card-tag">Active Memory</span>
+      <h3 class="card-title">Memory Tray</h3>
+      <p class="card-desc">Observe, then recall — a classic short-term memory challenge made beautifully digital.</p>
+    </div>
+    <span class="card-arrow">↗</span>
+  </a>
+  <a href="letsdance.html" class="game-card">
+    <div class="card-img" style="background-image:url('dance.png')"></div>
+    <div class="card-content">
+      <span class="card-tag">Motor Coordination</span>
+      <h3 class="card-title">Tap Dance Tiles</h3>
+      <p class="card-desc">Rhythmic tap-response exercises improving fine motor control through musical, movement-based play.</p>
+    </div>
+    <span class="card-arrow">↗</span>
+  </a>
+  <a href="hillracerclimbing.html" class="game-card">
+    <div class="card-img" style="background-image:url('car.png')"></div>
+    <div class="card-content">
+      <span class="card-tag">Coordination</span>
+      <h3 class="card-title">Hill Racer</h3>
+      <p class="card-desc">A physics-based driving game challenging fine motor control and sustained attention while being genuinely fun.</p>
+    </div>
+    <span class="card-arrow">↗</span>
+  </a>
+  <a href="spp.js-gh-pages/examples/fruitNinja/index.html" class="game-card">
+    <div class="card-img" style="background-image:url('fruit.png')"></div>
+    <div class="card-content">
+      <span class="card-tag">Reaction Speed</span>
+      <h3 class="card-title">Fruit Ninja</h3>
+      <p class="card-desc">Swipe-based slicing that sharpens hand-eye coordination and visual tracking in a playful format.</p>
+    </div>
+    <span class="card-arrow">↗</span>
+  </a>
+  <a href="color.html" class="game-card">
+    <div class="card-img" style="background-image:url('color.jpg')"></div> 
+    <div class="card-content">
+      <span class="card-tag">Cognitive Flexibility</span>
+      <h3 class="card-title">Color Swap</h3>
+      <p class="card-desc">A Stroop-inspired challenge training executive function and mental agility under pressure.</p>
+    </div>
+    <span class="card-arrow">↗</span>
+  </a>
+   <a href="train_of_thoughts_v3.html" class="game-card">
+    <div class="card-img" style="background-image:url('train.jpg')"></div>
+    <div class="card-content">
+      <span class="card-tag">multi tasking</span>
+      <h3 class="card-title">Train of Thoughts</h3>
+      <p class="card-desc">Rhythmic tap-response exercises improving fine motor control through musical, movement-based play.</p>
+    </div>
+    <span class="card-arrow">↗</span>
+  </a>
+   <a href="what's_missing.html" class="game-card">
+    <div class="card-img" style="background-image:url('missing.jpg')"></div>
+    <div class="card-content">
+      <span class="card-tag">sequence reproduction</span>
+      <h3 class="card-title">whats Missing</h3>
+      <p class="card-desc">Rhythmic tap-response exercises improving fine motor control through musical, movement-based play.</p>
+    </div>
+    <span class="card-arrow">↗</span>
+  </a>
+   <a href="N-back.html" class="game-card">
+    <div class="card-img" style="background-image:url('nbacktiles.jpg')"></div>
+    <div class="card-content">
+      <span class="card-tag">problem solving</span>
+      <h3 class="card-title">Tap Dance Tiles</h3>
+      <p class="card-desc">Rhythmic tap-response exercises improving fine motor control through musical, movement-based play.</p>
+    </div>
+    <span class="card-arrow">↗</span>
+  </a>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div>
+    <div class="footer-logo">Cogni<span>care</span></div>
+    <p style="font-size:11px;color:rgba(184,188,200,0.3);margin-top:12px;letter-spacing:0.08em;">AI · Cognitive Rehabilitation · Alzheimer's Care</p>
+  </div>
+  <p class="footer-copy">© 2025 Cognicare. All rights reserved.</p>
+</footer>
+
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script>
+/* CURSOR */
+const cur = document.getElementById('cursor');
+document.addEventListener('mousemove', e => {
+  cur.style.left = e.clientX + 'px';
+  cur.style.top  = e.clientY + 'px';
+});
+document.querySelectorAll('a, button, .game-card').forEach(el => {
+  el.addEventListener('mouseenter', () => cur.classList.add('expand'));
+  el.addEventListener('mouseleave', () => cur.classList.remove('expand'));
+});
+
+/* INTERSECTION OBSERVER */
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.12 });
+document.querySelectorAll('.reveal, .phil-item').forEach(el => io.observe(el));
+
+/* STORY SCROLLJACK */
+(function(){
+  const sec    = document.getElementById('story');
+  const slides = document.querySelectorAll('.story-slide');
+  const stats  = document.querySelectorAll('.story-stat');
+  const dots   = document.querySelectorAll('.story-dot');
+  const rail   = document.getElementById('story-rail-fill');
+  const TOTAL  = slides.length;
+  function set(i) {
+    slides.forEach((s,j) => s.classList.toggle('active', j===i));
+    stats.forEach((s,j)  => s.classList.toggle('active', j===i));
+    dots.forEach((d,j)   => d.classList.toggle('active', j===i));
+  }
+  window.addEventListener('scroll', () => {
+    const rect = sec.getBoundingClientRect();
+    const prog = Math.min(Math.max(-rect.top / (sec.offsetHeight - window.innerHeight), 0), 1);
+    set(Math.min(Math.floor(prog * TOTAL), TOTAL - 1));
+    rail.style.height = (prog * 100).toFixed(1) + '%';
+  }, { passive: true });
+})();
+
+/* SUPABASE AUTH */
+const sb = window.supabase.createClient(
+  "https://bmybtwrgosqxfvwkytui.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJteWJ0d3Jnb3NxeGZ2d2t5dHVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MDgzNjYsImV4cCI6MjA5MTI4NDM2Nn0.T9gQN6E950yklyLpSxkpCFkNjavi8jaNn4YscHY712w"
+);
+
+async function renderAuth() {
+  const { data: { user } } = await sb.auth.getUser();
+  const area = document.getElementById('auth-area');
+  if (!area) return;
+
+  area.innerHTML = !user
+    ? `<button onclick="gLogin()">Sign in</button>`
+    : `<span style="font-size:11px;color:var(--fog);margin-right:12px">
+         ${user.user_metadata.full_name || 'User'}
+       </span>
+       <button onclick="gOut()">Sign out</button>`;
+}
+
+/* ✅ FIXED GOOGLE LOGIN */
+async function gLogin() {
+  await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: window.location.origin  // ✅ FIXED (IMPORTANT)
+    }
+  });
+}
+
+async function gOut() {
+  await sb.auth.signOut();
+  location.reload();
+}
+
+renderAuth();
+</script>
+</body>
+</html>

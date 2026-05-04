@@ -1,0 +1,1371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<title>CogniCare</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet"/>
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0f;--surface:rgba(255,255,255,0.055);--border:rgba(255,255,255,0.10);
+  --text:#f5f5f7;--muted:rgba(245,245,247,0.45);
+  --red:#ff453a;--green:#30d158;--blue:#0a84ff;--yellow:#ffd60a;
+  --pink:#ff375f;--orange:#ff9f0a;--purple:#bf5af2;
+  --radius:22px;--watch-size:min(300px,80vw);--menu-w:280px;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;z-index:0;
+  background:radial-gradient(ellipse 60% 50% at 20% 20%,rgba(10,132,255,.12) 0%,transparent 70%),
+             radial-gradient(ellipse 50% 60% at 80% 80%,rgba(255,55,95,.10) 0%,transparent 70%),
+             radial-gradient(ellipse 40% 40% at 50% 50%,rgba(48,209,88,.06) 0%,transparent 70%);
+  pointer-events:none;animation:bgPulse 8s ease-in-out infinite alternate}
+@keyframes bgPulse{from{opacity:.6}to{opacity:1}}
+
+/* ── MENU OVERLAY ── */
+.menu-overlay{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .3s ease}
+.menu-overlay.open{opacity:1;pointer-events:all}
+.side-menu{position:fixed;top:0;left:0;bottom:0;z-index:101;width:var(--menu-w);background:#0f0f1a;border-right:1px solid var(--border);transform:translateX(calc(-1 * var(--menu-w)));transition:transform .35s cubic-bezier(.32,0,.15,1);display:flex;flex-direction:column;overflow:hidden}
+.side-menu.open{transform:translateX(0)}
+.menu-header{padding:52px 24px 20px;border-bottom:1px solid var(--border)}
+.menu-brand{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:500;margin-bottom:3px}
+.menu-title{font-size:22px;font-weight:600;letter-spacing:-.03em;background:linear-gradient(135deg,#f5f5f7 30%,rgba(245,245,247,.55));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.menu-nav{flex:1;padding:16px 12px;display:flex;flex-direction:column;gap:4px}
+.menu-item{display:flex;align-items:center;gap:14px;padding:13px 16px;border-radius:14px;cursor:pointer;transition:background .18s ease,transform .1s ease;border:1px solid transparent;text-decoration:none}
+.menu-item:active{transform:scale(.97)}
+.menu-item.active{background:rgba(255,255,255,.08);border-color:var(--border)}
+.menu-item:not(.active):hover{background:rgba(255,255,255,.05)}
+.menu-item-icon{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.menu-item.home .menu-item-icon{background:rgba(10,132,255,.18)}
+.menu-item.maps .menu-item-icon{background:rgba(48,209,88,.18)}
+.menu-item.asha .menu-item-icon{background:rgba(191,90,242,.18)}
+.menu-item.contacts .menu-item-icon{background:rgba(255,159,10,.18)}
+.menu-item-name{font-size:15px;font-weight:500;color:var(--text);line-height:1.2}
+.menu-item-desc{font-size:11px;color:var(--muted);margin-top:1px}
+.menu-footer{padding:16px 20px 32px;border-top:1px solid var(--border)}
+.menu-user{display:flex;align-items:center;gap:12px}
+.menu-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--purple));display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#fff;flex-shrink:0}
+.menu-user-name{font-size:14px;font-weight:500}
+.menu-user-status{font-size:11px;color:var(--green)}
+
+/* ── HAMBURGER ── */
+.hamburger{position:fixed;top:16px;left:16px;z-index:50;width:42px;height:42px;background:var(--surface);border:1px solid var(--border);border-radius:12px;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;transition:background .2s}
+.hamburger:hover{background:rgba(255,255,255,.1)}
+.hamburger span{display:block;width:18px;height:1.5px;background:var(--text);border-radius:2px;transition:transform .25s ease,opacity .25s ease}
+.hamburger.open span:nth-child(1){transform:translateY(6.5px) rotate(45deg)}
+.hamburger.open span:nth-child(2){opacity:0}
+.hamburger.open span:nth-child(3){transform:translateY(-6.5px) rotate(-45deg)}
+
+/* ── PAGES ── */
+.page{display:none}
+.page.active{display:flex;flex-direction:column;min-height:100vh}
+
+/* ── HOME ── */
+.app{position:relative;z-index:1;align-items:center;padding:56px 20px 40px;gap:24px}
+header{text-align:center}
+.brand{font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:500;margin-bottom:4px}
+header h1{font-size:32px;font-weight:600;letter-spacing:-.03em;background:linear-gradient(135deg,#f5f5f7 30%,rgba(245,245,247,.55));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.location-pill{display:flex;align-items:center;gap:7px;padding:7px 16px;background:var(--surface);border:1px solid var(--border);border-radius:40px;backdrop-filter:blur(20px);font-size:12px;color:var(--muted);max-width:360px;width:100%}
+.loc-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:dotPulse 2s ease-in-out infinite;flex-shrink:0}
+#locationText{color:var(--text);font-weight:500;font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.watch-wrap{position:relative;width:var(--watch-size);height:var(--watch-size)}
+.watch-bezel{position:absolute;inset:0;border-radius:38%/34%;background:linear-gradient(145deg,#2a2a35 0%,#111118 60%,#1c1c28 100%);box-shadow:0 0 0 2px rgba(255,255,255,.07),0 20px 60px rgba(0,0,0,.8),0 4px 16px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.12)}
+.watch-crown{position:absolute;right:-10px;top:50%;transform:translateY(-50%);width:10px;height:44px;background:linear-gradient(to right,#2a2a35,#3a3a45);border-radius:0 6px 6px 0;box-shadow:2px 0 8px rgba(0,0,0,.5)}
+.watch-screen{position:absolute;inset:8px;border-radius:34%/30%;background:#050508;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.watch-time{font-size:22px;font-weight:300;color:var(--text);letter-spacing:.04em;line-height:1;margin-bottom:2px}
+.watch-date{font-size:10px;font-weight:400;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+.rings-svg{width:130px;height:130px;flex-shrink:0}
+.ring-track{opacity:.18}
+.ring-hr-track{stroke:var(--red)}.ring-hr{stroke:var(--red);stroke-linecap:round;filter:drop-shadow(0 0 6px var(--red))}
+.ring-spo2-track{stroke:var(--blue)}.ring-spo2{stroke:var(--blue);stroke-linecap:round;filter:drop-shadow(0 0 6px var(--blue))}
+.ring-gsr-track{stroke:var(--green)}.ring-gsr{stroke:var(--green);stroke-linecap:round;filter:drop-shadow(0 0 6px var(--green))}
+.ring-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
+.ring-center-val{font-size:26px;font-weight:600;line-height:1;letter-spacing:-.04em;color:var(--text)}
+.ring-center-label{font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-top:2px}
+.watch-screen-inner{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px}
+.watch-stress{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:3px 12px;border-radius:20px;margin-top:8px}
+.watch-stress.relaxed{background:rgba(48,209,88,.18);color:var(--green)}
+.watch-stress.normal{background:rgba(10,132,255,.18);color:var(--blue)}
+.watch-stress.stressed{background:rgba(255,69,58,.18);color:var(--red)}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;max-width:360px}
+.metric-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 16px 14px;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);position:relative;overflow:hidden;transition:transform .2s ease}
+.metric-card:active{transform:scale(.97)}
+.metric-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(to right,transparent,rgba(255,255,255,.15),transparent)}
+.metric-icon{font-size:18px;margin-bottom:8px;display:block}
+.metric-label{font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.metric-value{font-size:28px;font-weight:600;letter-spacing:-.04em;line-height:1}
+.metric-unit{font-size:12px;font-weight:400;color:var(--muted);margin-left:2px}
+.metric-card.hr .metric-value{color:var(--red)}
+.metric-card.spo2 .metric-value{color:var(--blue)}
+.metric-card.gsr .metric-value{color:var(--green)}
+.metric-card.stress .metric-value{font-size:18px;letter-spacing:-.01em}
+.metric-card.stress.relaxed{border-color:rgba(48,209,88,.25)}
+.metric-card.stress.normal{border-color:rgba(10,132,255,.25)}
+.metric-card.stress.stressed{border-color:rgba(255,69,58,.35)}
+.sparkline-wrap{margin-top:8px;height:28px;overflow:hidden}
+.sparkline-wrap svg{width:100%;height:100%}
+.conn-bar{display:flex;align-items:center;gap:8px;padding:8px 16px;background:var(--surface);border:1px solid var(--border);border-radius:40px;backdrop-filter:blur(20px);font-size:12px;color:var(--muted)}
+.conn-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .4s ease}
+.conn-dot.connected{background:var(--green);box-shadow:0 0 8px var(--green);animation:dotPulse 2s ease-in-out infinite}
+.conn-dot.disconnected{background:var(--red)}
+.conn-dot.connecting{background:var(--yellow);animation:dotPulse 1s ease-in-out infinite}
+@keyframes dotPulse{0%,100%{opacity:1}50%{opacity:.4}}
+.ip-row{display:flex;align-items:center;gap:8px;width:100%;max-width:360px}
+.ip-input{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:40px;padding:10px 18px;font-size:14px;color:var(--text);font-family:'DM Sans',sans-serif;outline:none;backdrop-filter:blur(20px);transition:border-color .2s}
+.ip-input:focus{border-color:rgba(10,132,255,.5)}
+.connect-btn{background:var(--blue);color:#fff;border:none;border-radius:40px;padding:10px 20px;font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;white-space:nowrap;transition:opacity .2s,transform .15s}
+.connect-btn:active{opacity:.8;transform:scale(.97)}
+@keyframes heartBeat{0%,100%{transform:scale(1)}14%{transform:scale(1.15)}28%{transform:scale(1)}42%{transform:scale(1.08)}70%{transform:scale(1)}}
+.beating{animation:heartBeat .9s ease-in-out}
+
+/* ── PAGE SHELL ── */
+.page-header{position:relative;z-index:1;display:flex;align-items:center;gap:14px;padding:56px 20px 20px;border-bottom:1px solid var(--border)}
+.page-header-icon{width:44px;height:44px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.page-header-title{font-size:22px;font-weight:600;letter-spacing:-.03em}
+.page-header-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.page-body{position:relative;z-index:1;flex:1;padding:16px 16px 20px;overflow-y:auto}
+
+/* ═══════════════════════════════════════════════════════
+   MAPS PAGE
+═══════════════════════════════════════════════════════ */
+.maps-page .page-header-icon{background:rgba(48,209,88,.15)}
+
+/* Real map */
+#leafletMap{width:100%;height:320px;border-radius:18px;overflow:hidden;border:1px solid var(--border);margin-bottom:14px;z-index:1}
+/* Override leaflet tile for dark feel */
+.leaflet-tile{filter:brightness(.85) saturate(.9)}
+.leaflet-control-zoom a{background:#1a1a25 !important;color:var(--text) !important;border-color:var(--border) !important}
+.leaflet-popup-content-wrapper{background:#1a1a28 !important;border:1px solid var(--border) !important;border-radius:12px !important;color:var(--text) !important;box-shadow:0 8px 32px rgba(0,0,0,.6) !important}
+.leaflet-popup-tip{background:#1a1a28 !important}
+.leaflet-popup-content{font-family:'DM Sans',sans-serif !important;font-size:13px !important}
+
+/* Map controls row */
+.map-controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.map-btn{display:flex;align-items:center;gap:6px;padding:9px 16px;background:var(--surface);border:1px solid var(--border);border-radius:40px;font-size:12px;font-weight:500;color:var(--text);cursor:pointer;transition:background .18s,border-color .2s;white-space:nowrap}
+.map-btn:hover{background:rgba(255,255,255,.1)}
+.map-btn.primary{background:rgba(48,209,88,.15);border-color:rgba(48,209,88,.35);color:var(--green)}
+.map-btn.route-active{background:rgba(10,132,255,.2);border-color:rgba(10,132,255,.5);color:var(--blue)}
+.map-btn.danger{background:rgba(255,69,58,.12);border-color:rgba(255,69,58,.3);color:var(--red)}
+
+/* Location info card */
+.map-info-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;backdrop-filter:blur(20px);margin-bottom:10px}
+.map-info-row{display:flex;align-items:flex-start;gap:12px}
+.map-info-icon{font-size:20px;flex-shrink:0;margin-top:1px}
+.map-info-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:3px}
+.map-info-value{font-size:13px;font-weight:500;color:var(--text);line-height:1.4}
+
+/* Saved places */
+.section-title{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:14px 0 8px}
+.places-list{display:flex;flex-direction:column;gap:8px}
+.place-row{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;cursor:pointer;transition:background .18s}
+.place-row:hover{background:rgba(255,255,255,.08)}
+.place-row:active{transform:scale(.98)}
+.place-icon{font-size:20px;width:36px;height:36px;border-radius:10px;background:rgba(48,209,88,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.place-info{flex:1;min-width:0}
+.place-name{font-size:14px;font-weight:500;color:var(--text)}
+.place-addr{font-size:11px;color:var(--muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.place-actions{display:flex;gap:6px}
+.place-btn{width:30px;height:30px;border-radius:50%;border:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;transition:background .18s,transform .1s}
+.place-btn:active{transform:scale(.88)}
+.place-btn.go{background:rgba(10,132,255,.15);border-color:rgba(10,132,255,.3)}
+.place-btn.del{background:rgba(255,69,58,.12);border-color:rgba(255,69,58,.25)}
+.place-btn.voice{background:rgba(191,90,242,.12);border-color:rgba(191,90,242,.3)}
+
+/* Home + voice */
+.home-setup-card{background:rgba(10,132,255,.06);border:1px solid rgba(10,132,255,.22);border-radius:16px;padding:14px 16px;margin-bottom:12px;backdrop-filter:blur(20px)}
+.home-setup-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px;font-weight:600}
+.home-setup-row{display:flex;flex-direction:column;gap:8px}
+.home-setup-row input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;font-size:13px;color:var(--text);font-family:'DM Sans',sans-serif;outline:none}
+.home-setup-row input:focus{border-color:rgba(10,132,255,.45)}
+.home-setup-actions{display:flex;gap:8px;flex-wrap:wrap}
+.home-setup-actions button{flex:1;min-width:120px;padding:10px 14px;border-radius:12px;border:none;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer}
+.btn-home-save{background:var(--blue);color:#fff}
+.btn-home-refresh{background:rgba(255,255,255,.08);color:var(--text);border:1px solid var(--border)}
+.home-status{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.4}
+.place-distance{font-size:10px;color:var(--muted);margin-top:2px}
+.voice-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid rgba(10,132,255,.15)}
+.voice-btn{display:flex;align-items:center;gap:6px;padding:9px 14px;border-radius:40px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:500;color:var(--text);cursor:pointer;font-family:'DM Sans',sans-serif;transition:background .18s}
+.voice-btn:hover{background:rgba(255,255,255,.1)}
+.voice-btn.primary-voice{background:rgba(191,90,242,.15);border-color:rgba(191,90,242,.35);color:var(--purple)}
+.voice-btn.stop-voice{background:rgba(255,69,58,.1);border-color:rgba(255,69,58,.25);color:var(--red)}
+
+/* Add place form */
+.add-place-form{background:rgba(48,209,88,.05);border:1px dashed rgba(48,209,88,.25);border-radius:16px;padding:14px;margin-top:8px}
+.add-place-form input{width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:13px;color:var(--text);font-family:'DM Sans',sans-serif;outline:none;margin-bottom:8px}
+.add-place-form input:focus{border-color:rgba(48,209,88,.5)}
+.add-form-row{display:flex;gap:8px}
+.add-form-row button{flex:1;padding:9px 0;border-radius:10px;border:none;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:opacity .2s}
+.btn-save{background:var(--green);color:#000}
+.btn-cancel{background:rgba(255,255,255,.08);color:var(--text)}
+
+/* Route panel */
+.route-panel{background:rgba(10,132,255,.06);border:1px solid rgba(10,132,255,.2);border-radius:16px;padding:14px;margin-top:10px;display:none}
+.route-panel.open{display:block}
+.route-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.route-title{font-size:14px;font-weight:600;color:var(--blue)}
+.route-close{cursor:pointer;font-size:16px;color:var(--muted);padding:2px 6px}
+.route-summary{display:flex;gap:16px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid rgba(10,132,255,.15)}
+.route-stat{text-align:center}
+.route-stat-val{font-size:18px;font-weight:600;color:var(--blue)}
+.route-stat-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+.route-steps{display:flex;flex-direction:column;gap:8px;max-height:220px;overflow-y:auto}
+.route-step{display:flex;align-items:flex-start;gap:10px;padding:8px 10px;background:rgba(10,132,255,.06);border-radius:10px}
+.step-num{width:22px;height:22px;border-radius:50%;background:rgba(10,132,255,.2);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--blue);flex-shrink:0;margin-top:1px}
+.step-text{font-size:12px;color:var(--text);line-height:1.45}
+.step-dist{font-size:10px;color:var(--muted);margin-top:2px}
+
+/* ═══════════════════════════════════════════════════════
+   ASHA PAGE
+═══════════════════════════════════════════════════════ */
+.asha-page .page-header-icon{background:rgba(191,90,242,.15)}
+.chat-window{display:flex;flex-direction:column;gap:12px;padding-bottom:80px}
+.msg{display:flex;gap:10px;align-items:flex-end;max-width:88%}
+.msg.asha{align-self:flex-start}
+.msg.user{align-self:flex-end;flex-direction:row-reverse}
+.msg-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--pink));display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.msg-bubble{padding:11px 15px;border-radius:18px;font-size:14px;line-height:1.5}
+.msg.asha .msg-bubble{background:rgba(191,90,242,.12);border:1px solid rgba(191,90,242,.25);color:var(--text);border-bottom-left-radius:6px}
+.msg.user .msg-bubble{background:var(--blue);color:#fff;border-bottom-right-radius:6px}
+.msg-time{font-size:10px;color:var(--muted);padding:0 4px 2px}
+.asha-typing{display:flex;align-items:center;gap:5px;padding:11px 15px}
+.typing-dot{width:6px;height:6px;border-radius:50%;background:var(--purple);opacity:.5;animation:typingBounce 1.2s ease-in-out infinite}
+.typing-dot:nth-child(2){animation-delay:.2s}
+.typing-dot:nth-child(3){animation-delay:.4s}
+@keyframes typingBounce{0%,60%,100%{transform:translateY(0);opacity:.5}30%{transform:translateY(-5px);opacity:1}}
+.chat-input-wrap{position:fixed;bottom:0;left:0;right:0;z-index:10;padding:12px 16px 24px;background:linear-gradient(to top,var(--bg) 60%,transparent)}
+.chat-input-row{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.07);border:1px solid var(--border);border-radius:40px;padding:6px 6px 6px 16px;backdrop-filter:blur(20px)}
+.chat-input{flex:1;background:transparent;border:none;outline:none;font-size:14px;color:var(--text);font-family:'DM Sans',sans-serif}
+.chat-input::placeholder{color:var(--muted)}
+.chat-send{width:36px;height:36px;border-radius:50%;background:var(--purple);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:transform .15s,opacity .15s;flex-shrink:0}
+.chat-send:active{transform:scale(.92);opacity:.8}
+.quick-chips{display:flex;gap:8px;flex-wrap:wrap;padding:0 0 12px}
+.quick-chip{padding:7px 14px;background:rgba(191,90,242,.1);border:1px solid rgba(191,90,242,.25);border-radius:40px;font-size:12px;font-weight:500;color:var(--purple);cursor:pointer;transition:background .18s}
+.quick-chip:hover{background:rgba(191,90,242,.2)}
+.asha-status{display:flex;align-items:center;gap:8px;padding:10px 16px;background:rgba(191,90,242,.08);border:1px solid rgba(191,90,242,.2);border-radius:14px;font-size:12px;color:rgba(191,90,242,.9);margin-bottom:16px}
+.asha-status-dot{width:7px;height:7px;border-radius:50%;background:var(--purple);animation:dotPulse 2s ease-in-out infinite;flex-shrink:0}
+
+/* ═══════════════════════════════════════════════════════
+   CONTACTS PAGE
+═══════════════════════════════════════════════════════ */
+.contacts-page .page-header-icon{background:rgba(255,159,10,.15)}
+.contacts-search{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:11px 16px;backdrop-filter:blur(20px);margin-bottom:16px}
+.contacts-search input{flex:1;background:transparent;border:none;outline:none;font-size:14px;color:var(--text);font-family:'DM Sans',sans-serif}
+.contacts-search input::placeholder{color:var(--muted)}
+.contact-group-label{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:8px 4px}
+.contact-card{display:flex;align-items:center;gap:14px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-bottom:8px;cursor:pointer;transition:background .18s,transform .1s}
+.contact-card:active{transform:scale(.98)}
+.contact-card:hover{background:rgba(255,255,255,.08)}
+.contact-avatar{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;flex-shrink:0}
+.contact-info{flex:1;min-width:0}
+.contact-name{font-size:15px;font-weight:500;color:var(--text)}
+.contact-role{font-size:12px;color:var(--muted);margin-top:1px}
+.contact-actions{display:flex;gap:8px;flex-shrink:0}
+.contact-btn{width:34px;height:34px;border-radius:50%;border:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;transition:background .18s,transform .1s}
+.contact-btn:active{transform:scale(.9)}
+.contact-btn.call{background:rgba(48,209,88,.15);border-color:rgba(48,209,88,.3)}
+.contact-btn.msg{background:rgba(10,132,255,.15);border-color:rgba(10,132,255,.3)}
+.contact-btn.alert{background:rgba(255,69,58,.15);border-color:rgba(255,69,58,.3)}
+.contact-btn.del-btn{background:rgba(255,69,58,.12);border-color:rgba(255,69,58,.25)}
+.emergency-banner{display:flex;align-items:center;gap:12px;padding:14px 16px;background:rgba(255,69,58,.1);border:1px solid rgba(255,69,58,.3);border-radius:16px;margin-bottom:16px;cursor:pointer;transition:background .18s}
+.emergency-banner:hover{background:rgba(255,69,58,.15)}
+.emergency-icon{font-size:24px;flex-shrink:0}
+.emergency-label{font-size:14px;font-weight:600;color:var(--red)}
+.emergency-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.emergency-arrow{margin-left:auto;font-size:18px;color:var(--red);opacity:.6}
+
+/* Add contact button */
+.add-contact-btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;background:rgba(255,159,10,.08);border:1px dashed rgba(255,159,10,.3);border-radius:16px;margin-top:4px;cursor:pointer;font-size:13px;font-weight:500;color:var(--orange);transition:background .18s}
+.add-contact-btn:hover{background:rgba(255,159,10,.15)}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);display:none;align-items:flex-end;justify-content:center;padding:0 0 24px}
+.modal-overlay.open{display:flex}
+.modal{background:#0f0f1a;border:1px solid var(--border);border-radius:24px 24px 16px 16px;padding:24px 20px 20px;width:100%;max-width:480px;animation:slideUp .3s cubic-bezier(.32,0,.15,1)}
+@keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-title{font-size:17px;font-weight:600;margin-bottom:16px;letter-spacing:-.02em}
+.modal-field{margin-bottom:12px}
+.modal-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:5px;font-weight:500}
+.modal-input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:11px 14px;font-size:14px;color:var(--text);font-family:'DM Sans',sans-serif;outline:none;transition:border-color .2s}
+.modal-input:focus{border-color:rgba(255,159,10,.5)}
+.modal-row{display:flex;gap:10px;margin-top:4px}
+.modal-btn{flex:1;padding:12px 0;border-radius:12px;border:none;font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:opacity .2s}
+.modal-btn-save{background:var(--orange);color:#000}
+.modal-btn-cancel{background:rgba(255,255,255,.08);color:var(--text)}
+</style>
+</head>
+<body>
+
+<!-- Hamburger -->
+<button class="hamburger" id="hamburger" onclick="toggleMenu()">
+  <span></span><span></span><span></span>
+</button>
+
+<!-- Overlay -->
+<div class="menu-overlay" id="menuOverlay" onclick="closeMenu()"></div>
+
+<!-- Side Drawer -->
+<nav class="side-menu" id="sideMenu">
+  <div class="menu-header">
+    <div class="menu-brand">Health Monitor</div>
+    <div class="menu-title">CogniCare</div>
+  </div>
+  <div class="menu-nav">
+    <div class="menu-item home active" onclick="showPage('home')">
+      <div class="menu-item-icon">💙</div>
+      <div class="menu-item-text"><div class="menu-item-name">Dashboard</div><div class="menu-item-desc">Vitals &amp; watch data</div></div>
+    </div>
+    <div class="menu-item maps" onclick="showPage('maps')">
+      <div class="menu-item-icon">🗺️</div>
+      <div class="menu-item-text"><div class="menu-item-name">Maps</div><div class="menu-item-desc">Location &amp; safe places</div></div>
+    </div>
+    <div class="menu-item asha" onclick="showPage('asha')">
+      <div class="menu-item-icon">🤖</div>
+      <div class="menu-item-text"><div class="menu-item-name">Talk to Asha</div><div class="menu-item-desc">AI companion &amp; support</div></div>
+    </div>
+    <div class="menu-item contacts" onclick="showPage('contacts')">
+      <div class="menu-item-icon">👥</div>
+      <div class="menu-item-text"><div class="menu-item-name">Saved Contacts</div><div class="menu-item-desc">Family &amp; care team</div></div>
+    </div>
+  </div>
+  <div class="menu-footer">
+    <div class="menu-user">
+      <div class="menu-avatar">P</div>
+      <div><div class="menu-user-name">Patient</div><div class="menu-user-status">● Active session</div></div>
+    </div>
+  </div>
+</nav>
+
+<!-- ══ HOME ══════════════════════════════════════════════ -->
+<div class="page active app" id="page-home">
+  <header><p class="brand">Health Monitor</p><h1>CogniCare</h1></header>
+  <div class="location-pill">
+    <div class="loc-dot"></div>
+    <span style="font-size:13px">📍</span>
+    <span id="locationText">Locating…</span>
+  </div>
+  <div class="watch-wrap">
+    <div class="watch-bezel"></div>
+    <div class="watch-crown"></div>
+    <div class="watch-screen">
+      <div class="watch-screen-inner">
+        <div class="watch-time" id="watchTime">--:--</div>
+        <div class="watch-date" id="watchDate">--- --, ----</div>
+        <div style="position:relative;width:130px;height:130px;">
+          <svg class="rings-svg" viewBox="0 0 130 130">
+            <circle class="ring-track ring-gsr-track" cx="65" cy="65" r="58" fill="none" stroke-width="8"/>
+            <circle id="ringGSR" class="ring-gsr" cx="65" cy="65" r="58" fill="none" stroke-width="8" stroke-dasharray="364.4" stroke-dashoffset="364.4" transform="rotate(-90 65 65)" style="transition:stroke-dashoffset .8s ease"/>
+            <circle class="ring-track ring-spo2-track" cx="65" cy="65" r="47" fill="none" stroke-width="8"/>
+            <circle id="ringSPO2" class="ring-spo2" cx="65" cy="65" r="47" fill="none" stroke-width="8" stroke-dasharray="295.3" stroke-dashoffset="295.3" transform="rotate(-90 65 65)" style="transition:stroke-dashoffset .8s ease"/>
+            <circle class="ring-track ring-hr-track" cx="65" cy="65" r="36" fill="none" stroke-width="8"/>
+            <circle id="ringHR" class="ring-hr" cx="65" cy="65" r="36" fill="none" stroke-width="8" stroke-dasharray="226.2" stroke-dashoffset="226.2" transform="rotate(-90 65 65)" style="transition:stroke-dashoffset .8s ease"/>
+          </svg>
+          <div class="ring-center"><div class="ring-center-val" id="watchHR">--</div><div class="ring-center-label">BPM</div></div>
+        </div>
+        <div class="watch-stress normal" id="watchStress">––</div>
+      </div>
+    </div>
+  </div>
+  <div class="metrics">
+    <div class="metric-card hr" id="hrCard">
+      <span class="metric-icon">❤️</span><div class="metric-label">Heart Rate</div>
+      <div class="metric-value" id="hrValue">--<span class="metric-unit">bpm</span></div>
+      <div class="sparkline-wrap"><svg id="hrSpark" viewBox="0 0 100 28" preserveAspectRatio="none"></svg></div>
+    </div>
+    <div class="metric-card spo2">
+      <span class="metric-icon">💧</span><div class="metric-label">SpO₂</div>
+      <div class="metric-value" id="spo2Value">--<span class="metric-unit">%</span></div>
+      <div class="sparkline-wrap"><svg id="spo2Spark" viewBox="0 0 100 28" preserveAspectRatio="none"></svg></div>
+    </div>
+    <div class="metric-card gsr">
+      <span class="metric-icon">⚡</span><div class="metric-label">GSR</div>
+      <div class="metric-value" id="gsrValue">--<span class="metric-unit">raw</span></div>
+      <div class="sparkline-wrap"><svg id="gsrSpark" viewBox="0 0 100 28" preserveAspectRatio="none"></svg></div>
+    </div>
+    <div class="metric-card stress normal" id="stressCard">
+      <span class="metric-icon">🧠</span><div class="metric-label">Stress State</div>
+      <div class="metric-value" id="stressValue">––</div>
+    </div>
+  </div>
+  <div class="ip-row">
+    <input class="ip-input" id="ipInput" type="text" placeholder="192.168.4.1" value="192.168.4.1"/>
+    <button class="connect-btn" onclick="connect()">Connect</button>
+  </div>
+  <div class="conn-bar">
+    <div class="conn-dot disconnected" id="connDot"></div>
+    <span id="connLabel">Not connected</span>
+  </div>
+</div>
+
+<!-- ══ MAPS ══════════════════════════════════════════════ -->
+<div class="page maps-page" id="page-maps" style="position:relative;z-index:1">
+  <div class="page-header">
+    <div class="page-header-icon">🗺️</div>
+    <div><div class="page-header-title">Maps</div><div class="page-header-sub">Live location &amp; safe places</div></div>
+  </div>
+  <div class="page-body">
+
+    <!-- Map -->
+    <div id="leafletMap"></div>
+
+    <!-- Controls -->
+    <div class="map-controls">
+      <div class="map-btn primary" onclick="centerOnMe()">📍 My Location</div>
+      <div class="map-btn" id="routeToggleBtn" onclick="toggleRouteMode()">🧭 Get Route</div>
+      <div class="map-btn danger" id="clearRouteBtn" onclick="clearRoute()" style="display:none">✕ Clear Route</div>
+    </div>
+
+    <!-- Location card -->
+    <div class="map-info-card">
+      <div class="map-info-row">
+        <div class="map-info-icon">📍</div>
+        <div>
+          <div class="map-info-label">Current Location</div>
+          <div class="map-info-value" id="mapLocationText">Requesting location permission…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Safety -->
+    <div class="map-info-card" id="safetyCard">
+      <div class="map-info-row">
+        <div class="map-info-icon">🛡️</div>
+        <div>
+          <div class="map-info-label">Safety Status</div>
+          <div class="map-info-value" id="safetyStatusText" style="color:var(--green)">Set home to enable 1 km zone check</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Home address (routes & nearby places) -->
+    <div class="home-setup-card">
+      <div class="home-setup-label">🏠 Home location</div>
+      <div class="home-setup-row">
+        <input type="text" id="homeAddressInput" placeholder="Street, area, city…" value="6, Lal Bahadur Shastri St, Chennai, India"/>
+        <div class="home-setup-actions">
+          <button type="button" class="btn-home-save" onclick="saveHomeAddress()">Save home</button>
+          <button type="button" class="btn-home-refresh" onclick="refreshNearbyFromHome()">Refresh nearby</button>
+        </div>
+      </div>
+      <div class="home-status" id="homeStatusText">Geocoding home and loading places within 1 km…</div>
+    </div>
+
+    <!-- Route result panel -->
+    <div class="route-panel" id="routePanel">
+      <div class="route-header">
+        <div class="route-title">🧭 Route Instructions</div>
+        <div class="route-close" onclick="clearRoute()">✕</div>
+      </div>
+      <div class="route-summary">
+        <div class="route-stat"><div class="route-stat-val" id="routeDist">—</div><div class="route-stat-label">Distance</div></div>
+        <div class="route-stat"><div class="route-stat-val" id="routeTime">—</div><div class="route-stat-label">Est. Time</div></div>
+        <div class="route-stat"><div class="route-stat-val" id="routeSteps">—</div><div class="route-stat-label">Steps</div></div>
+      </div>
+      <div class="voice-row">
+        <button type="button" class="voice-btn primary-voice" id="btnSpeakRoute" onclick="speakLastRoute()">🔊 Speak directions</button>
+        <button type="button" class="voice-btn stop-voice" onclick="stopVoiceGuide()">⏹ Stop</button>
+      </div>
+      <div class="route-steps" id="routeStepsEl"></div>
+    </div>
+
+    <!-- Saved Places -->
+    <div class="section-title">📌 Home &amp; nearby (within 1 km)</div>
+    <div class="places-list" id="placesList"></div>
+
+    <!-- Add place -->
+    <div class="map-btn" style="margin-top:8px;justify-content:center" onclick="toggleAddPlace()">➕ Add New Place</div>
+    <div class="add-place-form" id="addPlaceForm" style="display:none;margin-top:8px">
+      <input type="text" id="placeNameInput" placeholder="Place name (e.g. Hospital)" />
+      <input type="text" id="placeAddrInput" placeholder="Address or landmark" />
+      <div style="margin-bottom:8px;font-size:11px;color:var(--muted)">Or tap "📍 Pin on map" and click the map</div>
+      <div class="add-form-row">
+        <button class="btn-save" onclick="searchAndAddPlace()">🔍 Search &amp; Add</button>
+        <button class="btn-save" style="background:var(--blue)" onclick="startPinMode()">📍 Pin on Map</button>
+        <button class="btn-cancel" onclick="toggleAddPlace()">Cancel</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ ASHA ══════════════════════════════════════════════ -->
+<div class="page asha-page" id="page-asha" style="position:relative;z-index:1">
+  <div class="page-header">
+    <div class="page-header-icon">🤖</div>
+    <div><div class="page-header-title">Talk to Asha</div><div class="page-header-sub">Your AI companion &amp; support</div></div>
+  </div>
+  <div class="page-body">
+    <div class="asha-status"><div class="asha-status-dot"></div>Asha is active and monitoring your vitals</div>
+    <div class="quick-chips">
+      <div class="quick-chip" onclick="sendQuick('How am I feeling today?')">How am I feeling?</div>
+      <div class="quick-chip" onclick="sendQuick('I feel confused')">I feel confused</div>
+      <div class="quick-chip" onclick="sendQuick('I need help')">I need help</div>
+      <div class="quick-chip" onclick="sendQuick('Take me home')">Take me home</div>
+    </div>
+    <div class="chat-window" id="chatWindow">
+      <div class="msg asha">
+        <div class="msg-avatar">A</div>
+        <div><div class="msg-bubble">Hello! I'm Asha, your CogniCare companion. I'm here to help you anytime — with directions, how you're feeling, or just a chat. How are you doing today? 😊</div><div class="msg-time">Just now</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="chat-input-wrap">
+    <div class="chat-input-row">
+      <input class="chat-input" id="chatInput" type="text" placeholder="Message Asha…" onkeydown="if(event.key==='Enter')sendMessage()"/>
+      <button class="chat-send" onclick="sendMessage()">➤</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ CONTACTS ══════════════════════════════════════════ -->
+<div class="page contacts-page" id="page-contacts" style="position:relative;z-index:1">
+  <div class="page-header">
+    <div class="page-header-icon">👥</div>
+    <div><div class="page-header-title">Saved Contacts</div><div class="page-header-sub">Your care team &amp; family</div></div>
+  </div>
+  <div class="page-body">
+    <div class="emergency-banner" onclick="alert('Emergency alert sent to all contacts!')">
+      <div class="emergency-icon">🚨</div>
+      <div><div class="emergency-label">Send Emergency Alert</div><div class="emergency-sub">Notify all contacts instantly with your location</div></div>
+      <div class="emergency-arrow">›</div>
+    </div>
+    <div class="contacts-search">
+      <span style="font-size:16px">🔍</span>
+      <input type="text" placeholder="Search contacts…" oninput="filterContacts(this.value)"/>
+    </div>
+    <div id="contactsList"></div>
+    <div class="add-contact-btn" onclick="openAddContact()">➕ &nbsp;Add New Contact</div>
+  </div>
+</div>
+
+<!-- Add Contact Modal -->
+<div class="modal-overlay" id="contactModal">
+  <div class="modal">
+    <div class="modal-title">➕ Add New Contact</div>
+    <div class="modal-field"><div class="modal-label">Full Name</div><input class="modal-input" id="newContactName" placeholder="e.g. Dr. Ramesh Kumar"/></div>
+    <div class="modal-field"><div class="modal-label">Role / Relation</div><input class="modal-input" id="newContactRole" placeholder="e.g. Neurologist · Primary Doctor"/></div>
+    <div class="modal-field"><div class="modal-label">Category</div>
+      <select class="modal-input" id="newContactCategory">
+        <option value="care">Care Team</option>
+        <option value="family">Family &amp; Caregivers</option>
+        <option value="emergency">Emergency Services</option>
+      </select>
+    </div>
+    <div class="modal-row">
+      <button class="modal-btn modal-btn-save" onclick="saveNewContact()">Save Contact</button>
+      <button class="modal-btn modal-btn-cancel" onclick="closeContactModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════
+   GLOBALS
+═══════════════════════════════════════════════════════════ */
+let ws = null;
+const hist = { hr:[], spo2:[], gsr:[] };
+const MAX_HIST = 30;
+let map, myMarker, myCircle;
+let userLat = null, userLng = null;
+let routeMode = false, pinMode = false;
+let savedPlaces = [];
+let contacts = [];
+
+/* Home, nearby, routing layers, voice */
+const LS_HOME_ADDR = 'cognicare_home_address';
+const LS_USER_PLACES = 'cognicare_user_places';
+const DEFAULT_HOME_ADDRESS = '6, Lal Bahadur Shastri St, Chennai, India';
+const NEARBY_RADIUS_M = 1000;
+let homeLat = null, homeLng = null, homeDisplayAddr = '';
+let homeMarker = null, homeZoneCircle = null;
+let routeLineLayer = null, routeDestMarker = null;
+let lastRouteVoiceLines = [];
+let lastRouteOriginLabel = '';
+let lastRouteDestName = '';
+
+/* ═══════════════════════════════════════════════════════════
+   CLOCK
+═══════════════════════════════════════════════════════════ */
+const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function tickClock(){
+  const n=new Date();
+  document.getElementById('watchTime').textContent=n.getHours().toString().padStart(2,'0')+':'+n.getMinutes().toString().padStart(2,'0');
+  document.getElementById('watchDate').textContent=`${DAYS[n.getDay()]}, ${MONTHS[n.getMonth()]} ${n.getDate()} ${n.getFullYear()}`;
+}
+setInterval(tickClock,1000); tickClock();
+
+/* ═══════════════════════════════════════════════════════════
+   MENU
+═══════════════════════════════════════════════════════════ */
+function toggleMenu(){
+  const m=document.getElementById('sideMenu'),o=document.getElementById('menuOverlay'),b=document.getElementById('hamburger');
+  const open=m.classList.contains('open');
+  m.classList.toggle('open',!open); o.classList.toggle('open',!open); b.classList.toggle('open',!open);
+}
+function closeMenu(){
+  document.getElementById('sideMenu').classList.remove('open');
+  document.getElementById('menuOverlay').classList.remove('open');
+  document.getElementById('hamburger').classList.remove('open');
+}
+function showPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.menu-item').forEach(i=>i.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  const cls=name==='home'?'home':name==='maps'?'maps':name==='asha'?'asha':'contacts';
+  document.querySelector('.menu-item.'+cls).classList.add('active');
+  closeMenu();
+  if(name==='maps'){ setTimeout(()=>{ if(map) map.invalidateSize(); },200); }
+  if(name==='asha'){ setTimeout(()=>{ const c=document.getElementById('chatWindow'); if(c) c.scrollTop=c.scrollHeight; },100); }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   GEOLOCATION + MAP
+═══════════════════════════════════════════════════════════ */
+function initMap(){
+  map = L.map('leafletMap',{
+    center:[13.0827,80.2707], // Default: Chennai
+    zoom:15,
+    zoomControl:true,
+    attributionControl:false
+  });
+
+  // OSM dark-ish tile
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    maxZoom:19,
+    attribution:'© OpenStreetMap'
+  }).addTo(map);
+
+  // Light attribution
+  L.control.attribution({position:'bottomright'}).addTo(map);
+
+  // Click on map
+  map.on('click', onMapClick);
+
+  // Request location
+  requestLocation();
+}
+
+function requestLocation(){
+  setLocText('Requesting location permission…');
+  if(!navigator.geolocation){ setLocText('Geolocation not supported'); return; }
+  navigator.geolocation.getCurrentPosition(onLocSuccess, onLocError, {enableHighAccuracy:true,timeout:15000});
+  navigator.geolocation.watchPosition(onLocSuccess, ()=>{}, {enableHighAccuracy:true,maximumAge:10000});
+}
+
+function onLocSuccess(pos){
+  userLat = pos.coords.latitude;
+  userLng = pos.coords.longitude;
+  const acc = pos.coords.accuracy;
+
+  // Update my marker
+  if(!myMarker){
+    const icon = L.divIcon({
+      html:'<div style="width:16px;height:16px;border-radius:50%;background:#30d158;border:3px solid #fff;box-shadow:0 0 12px rgba(48,209,88,.7)"></div>',
+      iconSize:[16,16], iconAnchor:[8,8], className:''
+    });
+    myMarker = L.marker([userLat,userLng],{icon}).addTo(map).bindPopup('<b>📍 You are here</b>');
+    myCircle = L.circle([userLat,userLng],{radius:acc,color:'#30d158',fillColor:'#30d158',fillOpacity:.08,weight:1}).addTo(map);
+    map.setView([userLat,userLng],16);
+  } else {
+    myMarker.setLatLng([userLat,userLng]);
+    myCircle.setLatLng([userLat,userLng]).setRadius(acc);
+  }
+
+  reverseGeocode(userLat, userLng);
+  updateSafetyRelativeToHome();
+}
+
+function onLocError(err){
+  const msgs={1:'Location permission denied. Please allow in browser settings.',2:'Position unavailable.',3:'Location request timed out.'};
+  setLocText(msgs[err.code]||'Location error');
+}
+
+function setLocText(t){
+  const els=['locationText','mapLocationText'];
+  els.forEach(id=>{ const e=document.getElementById(id); if(e) e.textContent=t; });
+}
+
+function reverseGeocode(lat,lng){
+  fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`)
+    .then(r=>r.json())
+    .then(d=>{
+      const a=d.address||{};
+      const parts=[a.road||a.pedestrian||a.path, a.suburb||a.neighbourhood||a.village, a.city||a.town||a.county].filter(Boolean);
+      setLocText(parts.length?parts.join(', '):`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+    }).catch(()=>{ setLocText(`${lat.toFixed(5)}, ${lng.toFixed(5)}`); });
+}
+
+function centerOnMe(){
+  if(userLat&&map) map.setView([userLat,userLng],17);
+  else requestLocation();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SAVED PLACES + HOME + NEARBY + VOICE
+═══════════════════════════════════════════════════════════ */
+const EMOJI_MAP={home:'🏠',hospital:'🏥',temple:'⛪',church:'⛪',ebenezer:'⛪',masjid:'🕌',mosque:'🕌',school:'🏫',park:'🌳',market:'🏪',pharmacy:'💊',police:'👮',default:'📌'};
+function placeEmoji(name){
+  const n=name.toLowerCase();
+  for(const k in EMOJI_MAP){ if(n.includes(k)) return EMOJI_MAP[k]; }
+  return EMOJI_MAP.default;
+}
+
+const placeMarkers=[];
+function clearPlaceMarkers(){
+  placeMarkers.forEach(({marker})=>{ try{ map.removeLayer(marker);}catch(e){} });
+  placeMarkers.length=0;
+}
+
+function addPlaceMarker(place){
+  const border=place.isHome?'rgba(10,132,255,.55)':'rgba(48,209,88,.6)';
+  const icon=L.divIcon({
+    html:`<div style="background:#1a1a28;border:2px solid ${border};border-radius:10px;padding:4px 8px;font-size:12px;white-space:nowrap;color:#f5f5f7;box-shadow:0 4px 12px rgba(0,0,0,.5)">${place.emoji} ${escapeHtml(place.name)}</div>`,
+    className:'',iconAnchor:[40,32]
+  });
+  const m=L.marker([place.lat,place.lng],{icon}).addTo(map);
+  m.bindPopup(`<b>${place.emoji} ${escapeHtml(place.name)}</b><br><span style="font-size:11px;color:#aaa">${escapeHtml(place.addr||'')}</span>`);
+  placeMarkers.push({id:place.id,marker:m});
+}
+
+function escapeHtml(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function haversineM(aLat,aLng,bLat,bLng){
+  const R=6371000, toRad=x=>x*Math.PI/180;
+  const dLat=toRad(bLat-aLat), dLng=toRad(bLng-aLng);
+  const h=Math.sin(dLat/2)**2+Math.cos(toRad(aLat))*Math.cos(toRad(bLat))*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.min(1,Math.sqrt(h)));
+}
+
+function setHomeStatus(t){ const e=document.getElementById('homeStatusText'); if(e) e.textContent=t; }
+
+function loadUserPlacesFromStorage(){
+  try{
+    const raw=localStorage.getItem(LS_USER_PLACES);
+    if(!raw) return [];
+    const a=JSON.parse(raw);
+    return Array.isArray(a)?a:[];
+  }catch(_){ return []; }
+}
+
+function persistUserPlaces(){
+  const user=savedPlaces.filter(p=>p.userAdded);
+  localStorage.setItem(LS_USER_PLACES,JSON.stringify(user.map(({id,name,addr,lat,lng,emoji})=>({id,name,addr,lat,lng,emoji}))));
+}
+
+function updateSafetyRelativeToHome(){
+  const el=document.getElementById('safetyStatusText');
+  if(!el) return;
+  if(homeLat==null||homeLng==null){ el.textContent='Set home to enable 1 km zone check'; el.style.color='var(--muted)'; return; }
+  if(userLat==null||userLng==null){ el.textContent='Turn on location to compare with your home zone'; el.style.color='var(--yellow)'; return; }
+  const d=haversineM(userLat,userLng,homeLat,homeLng);
+  if(d<=NEARBY_RADIUS_M){ el.textContent='✓ Within 1 km of home'; el.style.color='var(--green)'; }
+  else{ el.textContent=`About ${Math.round(d)} m from home (outside 1 km ring)`; el.style.color='var(--orange)'; }
+}
+
+function drawHomeOnMap(){
+  if(!map||homeLat==null) return;
+  const houseHtml='<div style="width:22px;height:22px;border-radius:50%;background:#0a84ff;border:3px solid #fff;box-shadow:0 0 12px rgba(10,132,255,.7);display:flex;align-items:center;justify-content:center;font-size:11px">🏠</div>';
+  const icon=L.divIcon({html:houseHtml,iconSize:[22,22],iconAnchor:[11,11],className:''});
+  if(!homeMarker){ homeMarker=L.marker([homeLat,homeLng],{icon,zIndexOffset:500}).addTo(map).bindPopup('<b>🏠 Home</b>'); }
+  else homeMarker.setLatLng([homeLat,homeLng]);
+  if(!homeZoneCircle){ homeZoneCircle=L.circle([homeLat,homeLng],{radius:NEARBY_RADIUS_M,color:'#0a84ff',fillColor:'#0a84ff',fillOpacity:.06,weight:1,dashArray:'6,8'}).addTo(map); }
+  else homeZoneCircle.setLatLng([homeLat,homeLng]).setRadius(NEARBY_RADIUS_M);
+}
+
+async function nominatimSearch(q,extra=''){
+  const url=`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5${extra}`;
+  const r=await fetch(url,{headers:{'Accept-Language':'en'}});
+  if(!r.ok) throw new Error('search failed');
+  return r.json();
+}
+
+async function geocodeHomeAddress(address){
+  const results=await nominatimSearch(address);
+  if(!results||!results.length) return null;
+  const b=results[0];
+  return{lat:parseFloat(b.lat),lng:parseFloat(b.lon),display:b.display_name||address};
+}
+
+async function fetchOverpassNearby(lat,lng){
+  const q=`[out:json][timeout:25];
+(
+  node["amenity"="place_of_worship"](around:${NEARBY_RADIUS_M},${lat},${lng});
+  way["amenity"="place_of_worship"](around:${NEARBY_RADIUS_M},${lat},${lng});
+  node["amenity"="hospital"](around:${NEARBY_RADIUS_M},${lat},${lng});
+  way["amenity"="hospital"](around:${NEARBY_RADIUS_M},${lat},${lng});
+  node["amenity"="community_centre"](around:${NEARBY_RADIUS_M},${lat},${lng});
+  way["amenity"="community_centre"](around:${NEARBY_RADIUS_M},${lat},${lng});
+  node["tourism"="attraction"](around:${NEARBY_RADIUS_M},${lat},${lng});
+  way["tourism"="attraction"](around:${NEARBY_RADIUS_M},${lat},${lng});
+  node["leisure"="park"](around:${NEARBY_RADIUS_M},${lat},${lng});
+  way["leisure"="park"](around:${NEARBY_RADIUS_M},${lat},${lng});
+);
+out center tags;`;
+  const r=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(q)});
+  if(!r.ok) return [];
+  const j=await r.json();
+  const out=[];
+  const seen=new Set();
+  (j.elements||[]).forEach(el=>{
+    let la,lo,tags=el.tags||{};
+    if(el.type==='node'&&el.lat!=null){ la=el.lat; lo=el.lon; }
+    else if(el.center){ la=el.center.lat; lo=el.center.lon; }
+    else return;
+    const name=tags.name||tags['name:en']||tags.building||'Point of interest';
+    const key=`${la.toFixed(4)},${lo.toFixed(4)}`;
+    if(seen.has(key)) return;
+    seen.add(key);
+    const dist=haversineM(lat,lng,la,lo);
+    if(dist>NEARBY_RADIUS_M) return;
+    let addr=[tags['addr:street'],tags['addr:city']].filter(Boolean).join(', ')||`${la.toFixed(5)}, ${lo.toFixed(5)}`;
+    out.push({id:`osm-${el.type}-${el.id}`,name,addr,lat:la,lng:lo,emoji:placeEmoji(name),nearby:true,distM:dist});
+  });
+  out.sort((a,b)=>a.distM-b.distM);
+  return out;
+}
+
+const NAMED_NEARBY_QUERIES=[
+  'IPC Ebenezer Church, Chennai',
+  'Masjid E Noorul Huda, Chennai',
+];
+
+async function fetchNamedLandmarksNearHome(lat,lng){
+  const found=[];
+  const seen=new Set();
+  for(const q of NAMED_NEARBY_QUERIES){
+    try{
+      const results=await nominatimSearch(q);
+      await new Promise(res=>setTimeout(res,1100));
+      for(const b of results||[]){
+        const la=parseFloat(b.lat), lo=parseFloat(b.lon);
+        if(Number.isNaN(la)||Number.isNaN(lo)) continue;
+        const dist=haversineM(lat,lng,la,lo);
+        if(dist>NEARBY_RADIUS_M) continue;
+        const key=`${la.toFixed(4)},${lo.toFixed(4)}`;
+        if(seen.has(key)) continue;
+        seen.add(key);
+        const disp=b.display_name||q;
+        const name=(b.namedetails&&b.namedetails.name)||disp.split(',')[0];
+        found.push({id:`named-${found.length}-${Date.now()}`,name,addr:disp.split(',').slice(0,3).join(','),lat:la,lng:lo,emoji:placeEmoji(name),nearby:true,distM:dist});
+      }
+    }catch(_){ /* skip */ }
+  }
+  found.sort((a,b)=>a.distM-b.distM);
+  return found;
+}
+
+function mergeNearbyLists(primary,secondary){
+  const seen=new Set(), out=[];
+  [...primary,...secondary].forEach(p=>{
+    const nm=String(p.name||'').slice(0,24).toLowerCase();
+    const k=`${p.lat.toFixed(4)},${p.lng.toFixed(4)}-${nm}`;
+    if(seen.has(k)) return;
+    seen.add(k);
+    out.push(p);
+  });
+  out.sort((a,b)=>(a.distM||0)-(b.distM||0));
+  return out.slice(0,14);
+}
+
+async function refreshNearbyFromHome(){
+  if(homeLat==null){ setHomeStatus('Save a home address first.'); return; }
+  setHomeStatus('Loading places within 1 km…');
+  drawHomeOnMap();
+  let nearby=[];
+  try{ nearby=await fetchOverpassNearby(homeLat,homeLng); }catch(_){ setHomeStatus('Could not load map POIs. Trying named places…'); }
+  let named=[];
+  try{
+    await new Promise(r=>setTimeout(r,1100));
+    named=await fetchNamedLandmarksNearHome(homeLat,homeLng);
+  }catch(_){}
+  const merged=mergeNearbyLists(nearby,named);
+  const homeEntry={id:'home',name:'Home',addr:homeDisplayAddr,lat:homeLat,lng:homeLng,emoji:'🏠',isHome:true};
+  const user=loadUserPlacesFromStorage();
+  savedPlaces=[homeEntry,...merged,...user.map(u=>({...u,userAdded:true}))];
+  clearPlaceMarkers();
+  savedPlaces.forEach(p=>{ if(!p.isHome) addPlaceMarker(p); });
+  renderPlacesList();
+  setHomeStatus(`Home set. ${merged.length} nearby place(s) within ${NEARBY_RADIUS_M} m (map + landmarks).`);
+  updateSafetyRelativeToHome();
+}
+
+async function saveHomeAddress(){
+  const raw=document.getElementById('homeAddressInput').value.trim();
+  if(!raw){ alert('Enter your home address.'); return; }
+  setHomeStatus('Finding home on the map…');
+  try{
+    const g=await geocodeHomeAddress(raw);
+    if(!g){ setHomeStatus('Address not found. Try adding city and state.'); return; }
+    homeLat=g.lat; homeLng=g.lng; homeDisplayAddr=g.display;
+    localStorage.setItem(LS_HOME_ADDR,raw);
+    drawHomeOnMap();
+    map.flyTo([homeLat,homeLng],15);
+    await refreshNearbyFromHome();
+  }catch(e){ setHomeStatus('Geocoding failed. Check your connection.'); }
+}
+
+async function initPlaces(){
+  const input=document.getElementById('homeAddressInput');
+  const stored=localStorage.getItem(LS_HOME_ADDR)||DEFAULT_HOME_ADDRESS;
+  if(input) input.value=stored;
+  setHomeStatus('Loading home and nearby places…');
+  try{
+    const g=await geocodeHomeAddress(stored);
+    if(g){
+      homeLat=g.lat; homeLng=g.lng; homeDisplayAddr=g.display;
+      drawHomeOnMap();
+    }else setHomeStatus('Could not geocode saved home. Edit address and tap Save home.');
+  }catch(_){ setHomeStatus('Offline? Edit address and tap Save home when online.'); }
+  if(homeLat!=null) await refreshNearbyFromHome();
+  else{
+    savedPlaces=loadUserPlacesFromStorage().map(u=>({...u,userAdded:true}));
+    renderPlacesList();
+    savedPlaces.forEach(p=>addPlaceMarker(p));
+  }
+}
+
+function renderPlacesList(){
+  const el=document.getElementById('placesList');
+  if(!el) return;
+  el.innerHTML='';
+  savedPlaces.forEach(p=>{
+    const row=document.createElement('div');
+    row.className='place-row';
+    const distTxt=(p.distM!=null&&!p.isHome)?`${Math.round(p.distM)} m from home`:(p.isHome?'Your saved home':'');
+    row.innerHTML=`
+      <div class="place-icon">${p.emoji}</div>
+      <div class="place-info">
+        <div class="place-name"></div>
+        <div class="place-addr"></div>
+        ${distTxt?`<div class="place-distance">${escapeHtml(distTxt)}</div>`:''}
+      </div>
+      <div class="place-actions"></div>`;
+    row.querySelector('.place-name').textContent=p.name;
+    row.querySelector('.place-addr').textContent=p.addr||'Saved location';
+    const actions=row.querySelector('.place-actions');
+
+    const routeBtn=document.createElement('div');
+    routeBtn.className='place-btn go';
+    routeBtn.textContent='🧭';
+    if(p.isHome){
+      routeBtn.title='Walking route from your location to home';
+      routeBtn.onclick=()=>getRouteTo(p.lat,p.lng,p.name,{autoVoice:true});
+    }else{
+      routeBtn.title='Walking route from home to this place';
+      routeBtn.onclick=()=>getRouteFromHome(p.lat,p.lng,p.name,{autoVoice:true});
+    }
+
+    const fly=document.createElement('div');
+    fly.className='place-btn go';
+    fly.title='Show on map';
+    fly.textContent='👁️';
+    fly.style.background='rgba(48,209,88,.15)';
+    fly.style.borderColor='rgba(48,209,88,.3)';
+    fly.onclick=()=>flyTo(p.lat,p.lng);
+
+    const voice=document.createElement('div');
+    voice.className='place-btn voice';
+    voice.textContent='🔊';
+    if(p.isHome){
+      voice.title='Voice directions to home from where you are';
+      voice.onclick=()=>getRouteTo(p.lat,p.lng,p.name,{autoVoice:true});
+    }else{
+      voice.title='Voice directions from home to this place';
+      voice.onclick=()=>getRouteFromHome(p.lat,p.lng,p.name,{autoVoice:true});
+    }
+
+    actions.appendChild(routeBtn);
+    actions.appendChild(fly);
+    actions.appendChild(voice);
+
+    if(!p.isHome){
+      const del=document.createElement('div');
+      del.className='place-btn del';
+      del.title=p.userAdded?'Remove saved place':'Hide from list (until refresh)';
+      del.textContent='🗑️';
+      del.onclick=()=>deletePlace(p.id);
+      actions.appendChild(del);
+    }
+    el.appendChild(row);
+  });
+}
+
+function flyTo(lat,lng){ map.flyTo([lat,lng],17); }
+
+function deletePlace(id){
+  if(id==='home') return;
+  const p=savedPlaces.find(x=>x.id===id);
+  if(!p) return;
+  const msg=p.userAdded?'Remove this saved place permanently?':'Remove this nearby place from the list?';
+  if(!confirm(msg)) return;
+  const idx=placeMarkers.findIndex(m=>m.id===id);
+  if(idx>=0){ try{ map.removeLayer(placeMarkers[idx].marker);}catch(e){} placeMarkers.splice(idx,1); }
+  savedPlaces=savedPlaces.filter(x=>x.id!==id);
+  if(p.userAdded) persistUserPlaces();
+  renderPlacesList();
+}
+
+let addPlaceOpen=false;
+function toggleAddPlace(){
+  addPlaceOpen=!addPlaceOpen;
+  document.getElementById('addPlaceForm').style.display=addPlaceOpen?'block':'none';
+}
+
+function searchAndAddPlace(){
+  const name=document.getElementById('placeNameInput').value.trim();
+  const addr=document.getElementById('placeAddrInput').value.trim();
+  if(!name||!addr){ alert('Please enter both name and address'); return; }
+  fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addr)}&format=json&limit=1`)
+    .then(r=>r.json())
+    .then(results=>{
+      if(!results||!results.length){ alert('Address not found. Try a more specific address.'); return; }
+      const r=results[0];
+      const place={id:Date.now(),name,addr:r.display_name.split(',').slice(0,3).join(','),lat:parseFloat(r.lat),lng:parseFloat(r.lon),emoji:placeEmoji(name),userAdded:true};
+      savedPlaces.push(place);
+      addPlaceMarker(place);
+      persistUserPlaces();
+      renderPlacesList();
+      map.flyTo([place.lat,place.lng],16);
+      document.getElementById('placeNameInput').value='';
+      document.getElementById('placeAddrInput').value='';
+      toggleAddPlace();
+    }).catch(()=>alert('Search failed. Check your internet connection.'));
+}
+
+let pinModeListener=null;
+function startPinMode(){
+  const name=document.getElementById('placeNameInput').value.trim()||'New Place';
+  pinMode=true;
+  toggleAddPlace();
+  map.getContainer().style.cursor='crosshair';
+  // One-time click
+  pinModeListener=function(e){
+    if(!pinMode) return;
+    pinMode=false;
+    map.getContainer().style.cursor='';
+    map.off('click',pinModeListener);
+    const place={id:Date.now(),name,addr:`${e.latlng.lat.toFixed(5)}, ${e.latlng.lng.toFixed(5)}`,lat:e.latlng.lat,lng:e.latlng.lng,emoji:placeEmoji(name),userAdded:true};
+    savedPlaces.push(place);
+    addPlaceMarker(place);
+    persistUserPlaces();
+    renderPlacesList();
+  };
+  map.on('click',pinModeListener);
+}
+
+function onMapClick(e){
+  if(pinMode) return; // handled by pinModeListener
+  // If route mode: pick destination
+  if(routeMode){
+    routeMode=false;
+    document.getElementById('routeToggleBtn').classList.remove('route-active');
+    getRouteTo(e.latlng.lat, e.latlng.lng, 'Selected Point');
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ROUTING (OSRM) + VOICE
+═══════════════════════════════════════════════════════════ */
+function toggleRouteMode(){
+  if(!userLat){ alert('Waiting for your location…'); return; }
+  routeMode=!routeMode;
+  const btn=document.getElementById('routeToggleBtn');
+  btn.classList.toggle('route-active',routeMode);
+  btn.textContent=routeMode?'🎯 Tap destination':'🧭 Get Route';
+}
+
+function stopVoiceGuide(){
+  if(window.speechSynthesis) window.speechSynthesis.cancel();
+}
+
+function stepToPlainText(s){
+  if(!s||!s.maneuver) return '';
+  if(!s.name&&!s.maneuver.type) return '';
+  const stepDist=s.distance>1000?`${(s.distance/1000).toFixed(1)} kilometres`:`${Math.round(s.distance)} metres`;
+  const manType=(s.maneuver.type||'').replace(/-/g,' ');
+  const mod=s.maneuver.modifier?` ${s.maneuver.modifier}`:'';
+  const line=s.name?`${manType}${mod} onto ${s.name}`:(manType+mod).trim();
+  if(!line) return '';
+  return `${line}, for about ${stepDist}.`;
+}
+
+function buildVoiceLines(steps,originLabel,destName,distStr,timeStr){
+  const lines=[`Walking directions from ${originLabel} to ${destName}. Total distance about ${distStr}, roughly ${timeStr}.`];
+  let n=1;
+  (steps||[]).forEach(s=>{
+    const t=stepToPlainText(s);
+    if(t) lines.push(`Step ${n}: ${t}`), n++;
+  });
+  lines.push(`You have reached the area near ${destName}.`);
+  return lines;
+}
+
+function speakRouteLines(lines){
+  stopVoiceGuide();
+  if(!window.speechSynthesis||!lines||!lines.length){ alert('Voice not supported in this browser.'); return; }
+  const run=i=>{
+    if(i>=lines.length) return;
+    const u=new SpeechSynthesisUtterance(lines[i]);
+    u.rate=0.92;
+    u.lang='en-IN';
+    u.onend=()=>run(i+1);
+    window.speechSynthesis.speak(u);
+  };
+  run(0);
+}
+
+function speakLastRoute(){
+  if(!lastRouteVoiceLines.length){ alert('Plan a route first using 🧭 or 🔊 on a place.'); return; }
+  speakRouteLines(lastRouteVoiceLines);
+}
+
+function applyRouteResult(route,destLat,destLng,destName,originLabel){
+  const geojson=route.geometry;
+  if(routeLineLayer) try{ map.removeLayer(routeLineLayer);}catch(e){}
+  routeLineLayer=L.geoJSON(geojson,{style:{color:'#0a84ff',weight:5,opacity:.85,dashArray:'8,4',lineCap:'round'}}).addTo(map);
+  map.fitBounds(routeLineLayer.getBounds(),{padding:[30,30]});
+
+  if(routeDestMarker) try{ map.removeLayer(routeDestMarker);}catch(e){}
+  const destIcon=L.divIcon({
+    html:`<div style="background:#ff453a;border:3px solid #fff;width:16px;height:16px;border-radius:50%;box-shadow:0 0 12px rgba(255,69,58,.7)"></div>`,
+    iconSize:[16,16],iconAnchor:[8,8],className:''
+  });
+  routeDestMarker=L.marker([destLat,destLng],{icon:destIcon}).addTo(map).bindPopup(`<b>🏁 ${escapeHtml(destName)}</b>`).openPopup();
+
+  const distM=route.distance;
+  const distStr=distM>1000?`${(distM/1000).toFixed(1)} km`:`${Math.round(distM)} m`;
+  const mins=Math.round(route.duration/60);
+  const timeStr=mins<60?`${mins} minutes`:`${Math.floor(mins/60)} hours and ${mins%60} minutes`;
+  const steps=route.legs[0].steps||[];
+
+  document.getElementById('routeDist').textContent=distStr;
+  document.getElementById('routeTime').textContent=mins<60?`${mins} min`:`${Math.floor(mins/60)}h ${mins%60}m`;
+  document.getElementById('routeSteps').textContent=steps.length;
+
+  const stepsEl=document.getElementById('routeStepsEl');
+  stepsEl.innerHTML='';
+  steps.forEach((s,i)=>{
+    if(!s.maneuver||!s.name&&!s.maneuver.type) return;
+    const stepDist=s.distance>1000?`${(s.distance/1000).toFixed(1)} km`:`${Math.round(s.distance)} m`;
+    const manType=(s.maneuver.type||'').replace(/-/g,' ');
+    const mod=s.maneuver.modifier?` ${s.maneuver.modifier}`:'';
+    const text=s.name?`${manType}${mod} onto <b>${s.name}</b>`:manType+mod;
+    stepsEl.innerHTML+=`<div class="route-step"><div class="step-num">${i+1}</div><div><div class="step-text">${text}</div><div class="step-dist">${stepDist}</div></div></div>`;
+  });
+
+  lastRouteOriginLabel=originLabel;
+  lastRouteDestName=destName;
+  lastRouteVoiceLines=buildVoiceLines(steps,originLabel,destName,distStr,timeStr);
+
+  document.getElementById('routePanel').classList.add('open');
+  document.getElementById('clearRouteBtn').style.display='flex';
+  document.getElementById('routeToggleBtn').textContent='🧭 Get Route';
+  document.getElementById('routeToggleBtn').classList.remove('route-active');
+  routeMode=false;
+}
+
+function fetchFootRoute(startLng,startLat,destLng,destLat,destName,originLabel,opts){
+  clearRoute(false);
+  const url=`https://router.project-osrm.org/route/v1/foot/${startLng},${startLat};${destLng},${destLat}?overview=full&geometries=geojson&steps=true`;
+  fetch(url)
+    .then(r=>r.json())
+    .then(data=>{
+      if(data.code!=='Ok'||!data.routes||!data.routes.length){ alert('Route not found'); return; }
+      applyRouteResult(data.routes[0],destLat,destLng,destName,originLabel);
+      if(opts&&opts.autoVoice) speakRouteLines(lastRouteVoiceLines);
+    }).catch(()=>alert('Routing service unavailable. Check internet connection.'));
+}
+
+function getRouteTo(destLat,destLng,destName,opts){
+  if(!userLat){ alert('Waiting for your location…'); return; }
+  fetchFootRoute(userLng,userLat,destLng,destLat,destName,'your current location',opts||{});
+}
+
+function getRouteFromHome(destLat,destLng,destName,opts){
+  if(homeLat==null||homeLng==null){
+    alert('Set your home address under Maps first, then tap Save home.');
+    return;
+  }
+  fetchFootRoute(homeLng,homeLat,destLng,destLat,destName,'home',opts||{});
+}
+
+function clearRoute(closePanelToo=true){
+  stopVoiceGuide();
+  if(routeLineLayer&&map){ try{ map.removeLayer(routeLineLayer);}catch(e){} routeLineLayer=null; }
+  if(routeDestMarker&&map){ try{ map.removeLayer(routeDestMarker);}catch(e){} routeDestMarker=null; }
+  if(closePanelToo){
+    document.getElementById('routePanel').classList.remove('open');
+    document.getElementById('clearRouteBtn').style.display='none';
+    document.getElementById('routeToggleBtn').textContent='🧭 Get Route';
+    routeMode=false;
+    document.getElementById('routeToggleBtn').classList.remove('route-active');
+    lastRouteVoiceLines=[];
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CONTACTS
+═══════════════════════════════════════════════════════════ */
+const AVATAR_COLORS=['rgba(10,132,255,.18)','rgba(48,209,88,.18)','rgba(255,159,10,.18)','rgba(191,90,242,.18)','rgba(255,55,95,.18)'];
+const TEXT_COLORS=['var(--blue)','var(--green)','var(--orange)','var(--purple)','var(--pink)'];
+
+function initContacts(){
+  contacts=[
+    {id:1,name:'Dr. Priya Sharma',role:'Neurologist · Primary Doctor',cat:'care',ci:0},
+    {id:2,name:'Nurse Kavitha',role:'Registered Nurse · Daily check-in',cat:'care',ci:1},
+    {id:3,name:'Ravi (Son)',role:'Primary Caregiver · Family',cat:'family',ci:2},
+    {id:4,name:'Sunita (Daughter)',role:'Caregiver · Family',cat:'family',ci:4},
+    {id:5,name:'Meena (Neighbour)',role:'Emergency contact · Nearby',cat:'family',ci:3},
+    {id:6,name:'Ambulance',role:'Emergency · 108',cat:'emergency',ci:0},
+    {id:7,name:'SRM Hospital',role:'Nearest hospital · 2.4 km',cat:'emergency',ci:1},
+  ];
+  renderContacts();
+}
+
+function renderContacts(filter=''){
+  const el=document.getElementById('contactsList');
+  el.innerHTML='';
+  const cats=[{key:'care',label:'Care Team'},{key:'family',label:'Family & Caregivers'},{key:'emergency',label:'Emergency Services'}];
+  cats.forEach(cat=>{
+    const list=contacts.filter(c=>c.cat===cat.key&&(filter===''||c.name.toLowerCase().includes(filter)||c.role.toLowerCase().includes(filter)));
+    if(!list.length) return;
+    const grp=document.createElement('div');
+    grp.innerHTML=`<div class="contact-group-label">${cat.label}</div>`;
+    list.forEach(c=>{
+      const initials=c.name.split(' ').map(w=>w[0]).slice(0,2).join('');
+      const ci=c.ci%5;
+      grp.innerHTML+=`
+        <div class="contact-card" id="contact-${c.id}">
+          <div class="contact-avatar" style="background:${AVATAR_COLORS[ci]};color:${TEXT_COLORS[ci]}">${initials}</div>
+          <div class="contact-info"><div class="contact-name">${c.name}</div><div class="contact-role">${c.role}</div></div>
+          <div class="contact-actions">
+            <div class="contact-btn call" title="Call">📞</div>
+            <div class="contact-btn msg" title="Message">💬</div>
+            <div class="contact-btn del-btn" title="Delete" onclick="deleteContact(event,${c.id})">🗑️</div>
+          </div>
+        </div>`;
+    });
+    el.appendChild(grp);
+  });
+}
+
+function filterContacts(q){ renderContacts(q.toLowerCase()); }
+
+function deleteContact(e,id){
+  e.stopPropagation();
+  const c=contacts.find(x=>x.id===id);
+  if(!c) return;
+  if(!confirm(`Remove ${c.name}?`)) return;
+  contacts=contacts.filter(x=>x.id!==id);
+  renderContacts();
+}
+
+function openAddContact(){ document.getElementById('contactModal').classList.add('open'); }
+function closeContactModal(){ document.getElementById('contactModal').classList.remove('open'); }
+
+function saveNewContact(){
+  const name=document.getElementById('newContactName').value.trim();
+  const role=document.getElementById('newContactRole').value.trim();
+  const cat=document.getElementById('newContactCategory').value;
+  if(!name){ alert('Please enter a name'); return; }
+  contacts.push({id:Date.now(),name,role:role||'Contact',cat,ci:Math.floor(Math.random()*5)});
+  renderContacts();
+  document.getElementById('newContactName').value='';
+  document.getElementById('newContactRole').value='';
+  closeContactModal();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ASHA CHAT
+═══════════════════════════════════════════════════════════ */
+const ashaReplies={
+  'how am i feeling today?':'Based on your current vitals, your heart rate is steady and your SpO₂ looks good. You seem calm today! 😊',
+  'i feel confused':'I\'m here with you. Take a slow breath. 💜 Can you tell me where you are right now? I can help guide you home safely.',
+  'i need help':'I\'ve noted your location and I\'m alerting your caregiver Ravi right now. Stay where you are — help is on the way. 🚨',
+  'take me home':'Open Maps — your home is under “Home location”. Tap 🧭 or 🔊 on “Home” for a route from your GPS, or pick a nearby place for walking directions from home with voice.',
+};
+const defaultReplies=['I understand. Can you tell me more about how you\'re feeling?','I\'m monitoring your vitals and everything looks stable. Is there something specific I can help with?','That\'s good to know! Remember to stay hydrated and take your medication if it\'s time. 💊','I\'m always here for you. Would you like me to contact your caregiver or doctor?'];
+function getTime(){ const n=new Date(); return n.getHours().toString().padStart(2,'0')+':'+n.getMinutes().toString().padStart(2,'0'); }
+function appendMsg(text,sender){
+  const cw=document.getElementById('chatWindow');
+  const d=document.createElement('div'); d.className='msg '+sender;
+  if(sender==='asha') d.innerHTML=`<div class="msg-avatar">A</div><div><div class="msg-bubble">${text}</div><div class="msg-time">${getTime()}</div></div>`;
+  else d.innerHTML=`<div><div class="msg-bubble">${text}</div><div class="msg-time" style="text-align:right">${getTime()}</div></div>`;
+  cw.appendChild(d); cw.scrollTop=cw.scrollHeight;
+}
+function showTyping(){
+  const cw=document.getElementById('chatWindow');
+  const d=document.createElement('div'); d.className='msg asha'; d.id='typingIndicator';
+  d.innerHTML=`<div class="msg-avatar">A</div><div class="msg-bubble asha-typing"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>`;
+  cw.appendChild(d); cw.scrollTop=cw.scrollHeight;
+}
+function sendMessage(){
+  const inp=document.getElementById('chatInput');
+  const text=inp.value.trim(); if(!text) return;
+  inp.value=''; appendMsg(text,'user'); showTyping();
+  const reply=ashaReplies[text.toLowerCase()]||defaultReplies[Math.floor(Math.random()*defaultReplies.length)];
+  setTimeout(()=>{ const t=document.getElementById('typingIndicator'); if(t) t.remove(); appendMsg(reply,'asha'); },1200+Math.random()*600);
+}
+function sendQuick(text){ document.getElementById('chatInput').value=text; sendMessage(); }
+
+/* ═══════════════════════════════════════════════════════════
+   WEBSOCKET
+═══════════════════════════════════════════════════════════ */
+function connect(){
+  const ip=document.getElementById('ipInput').value.trim()||'192.168.4.1';
+  if(ws){ws.close();ws=null;}
+  setStatus('connecting','Connecting…');
+  try{ ws=new WebSocket('ws://'+ip+':81'); } catch(e){ setStatus('disconnected','Invalid address'); return; }
+  ws.onopen=()=>setStatus('connected','Connected to '+ip);
+  ws.onclose=()=>{ setStatus('disconnected','Disconnected — retrying…'); setTimeout(connect,3000); };
+  ws.onerror=()=>setStatus('disconnected','Connection error');
+  ws.onmessage=({data})=>{ try{ updateUI(JSON.parse(data)); }catch(e){} };
+}
+function setStatus(s,l){ document.getElementById('connDot').className='conn-dot '+s; document.getElementById('connLabel').textContent=l; }
+function updateUI(d){
+  const hr=d.hr>0?d.hr:null, spo2=d.spo2>0?d.spo2:null, gsr=d.gsr!=null?d.gsr:null, stress=d.stress||'––';
+  document.getElementById('hrValue').innerHTML=(hr??'--')+'<span class="metric-unit">bpm</span>';
+  document.getElementById('spo2Value').innerHTML=(spo2??'--')+'<span class="metric-unit">%</span>';
+  document.getElementById('gsrValue').innerHTML=(gsr??'--')+'<span class="metric-unit">raw</span>';
+  document.getElementById('watchHR').textContent=hr??'--';
+  const sn=stress.toLowerCase().replace(/\s/g,'');
+  const cls=sn==='relaxed'?'relaxed':sn==='stressed'?'stressed':'normal';
+  const ws2=document.getElementById('watchStress'); ws2.className='watch-stress '+cls; ws2.textContent=stress;
+  const sc=document.getElementById('stressCard'); sc.className='metric-card stress '+cls;
+  document.getElementById('stressValue').textContent=stress;
+  if(hr){ setRing('ringHR',226.2,Math.min(hr/200,1)); const c=document.getElementById('hrCard'); c.classList.remove('beating'); void c.offsetWidth; c.classList.add('beating'); }
+  if(spo2) setRing('ringSPO2',295.3,Math.max(0,Math.min((spo2-90)/10,1)));
+  if(gsr!=null) setRing('ringGSR',364.4,Math.min(gsr/4095,1));
+  if(hr) push('hr',hr); if(spo2) push('spo2',spo2); if(gsr!=null) push('gsr',gsr);
+  drawSpark('hrSpark',hist.hr,'#ff453a');
+  drawSpark('spo2Spark',hist.spo2,'#0a84ff');
+  drawSpark('gsrSpark',hist.gsr,'#30d158');
+}
+function setRing(id,total,pct){ document.getElementById(id).style.strokeDashoffset=total*(1-pct); }
+function push(k,v){ hist[k].push(v); if(hist[k].length>MAX_HIST) hist[k].shift(); }
+function drawSpark(svgId,data,color){
+  const svg=document.getElementById(svgId); if(!svg||data.length<2) return;
+  const W=100,H=28,p=2,min=Math.min(...data),max=Math.max(...data),range=max-min||1;
+  const pts=data.map((v,i)=>{ const x=p+(i/(data.length-1))*(W-p*2); const y=H-p-((v-min)/range)*(H-p*2); return `${x},${y}`; });
+  svg.innerHTML=`<defs><linearGradient id="sg_${svgId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${color}" stop-opacity=".35"/><stop offset="100%" stop-color="${color}" stop-opacity="0"/></linearGradient></defs><path d="M${pts.join(' L')} L${W-p},${H} L${p},${H} Z" fill="url(#sg_${svgId})"/><polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════════════ */
+window.addEventListener('load',async ()=>{
+  initMap();
+  await initPlaces();
+  initContacts();
+  connect();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NeuroWatch — Doctor's Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  :root {
+    --bg: #060d1a;
+    --surface: #0c1628;
+    --card: #101e35;
+    --border: #1a2e4a;
+    --accent: #00d4ff;
+    --accent2: #7c3aed;
+    --accent3: #10b981;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    --text: #e2eaf4;
+    --muted: #6b8299;
+    --font-head: 'Syne', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    position: fixed;
+    left: 0; top: 0; bottom: 0;
+    width: 240px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+    padding: 28px 0 20px;
+  }
+
+  .logo {
+    padding: 0 24px 28px;
+    border-bottom: 1px solid var(--border);
+  }
+  .logo-mark {
+    font-family: var(--font-head);
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--accent);
+    letter-spacing: -0.5px;
+  }
+  .logo-sub {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .nav { padding: 20px 12px; flex: 1; }
+  .nav-section { font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; padding: 0 12px; margin-bottom: 8px; margin-top: 18px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 8px;
+    cursor: pointer; font-size: 13.5px; font-weight: 500;
+    color: var(--muted); transition: all .2s; margin-bottom: 2px;
+  }
+  .nav-item:hover { background: var(--card); color: var(--text); }
+  .nav-item.active { background: rgba(0,212,255,0.1); color: var(--accent); }
+  .nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+
+  .sidebar-footer {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+  }
+  .doctor-info {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .doctor-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-head); font-weight: 700; font-size: 14px; color: #fff;
+  }
+  .doctor-name { font-size: 13px; font-weight: 600; }
+  .doctor-role { font-size: 11px; color: var(--muted); }
+
+  /* MAIN */
+  .main {
+    margin-left: 240px;
+    padding: 0;
+    min-height: 100vh;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* TOPBAR */
+  .topbar {
+    background: rgba(6,13,26,0.8);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 32px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 50;
+  }
+  .topbar-title { font-family: var(--font-head); font-size: 20px; font-weight: 700; }
+  .topbar-actions { display: flex; gap: 10px; align-items: center; }
+  .badge-live {
+    background: rgba(16,185,129,.15);
+    border: 1px solid var(--accent3);
+    color: var(--accent3);
+    font-size: 10px; font-weight: 600; letter-spacing: 1px;
+    padding: 4px 10px; border-radius: 20px; text-transform: uppercase;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .badge-live::before {
+    content: ''; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent3);
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  .btn {
+    padding: 9px 18px; border-radius: 8px; border: none;
+    font-family: var(--font-body); font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: all .2s; display: flex; align-items: center; gap: 6px;
+  }
+  .btn-ghost {
+    background: transparent; border: 1px solid var(--border); color: var(--muted);
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-primary {
+    background: var(--accent); color: #000;
+  }
+  .btn-primary:hover { background: #33ddff; transform: translateY(-1px); }
+  .btn-danger { background: rgba(239,68,68,.15); border: 1px solid var(--danger); color: var(--danger); }
+
+  /* CONTENT */
+  .content { padding: 28px 32px; }
+
+  /* STATS ROW */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    position: relative; overflow: hidden;
+    transition: transform .2s, border-color .2s;
+  }
+  .stat-card:hover { transform: translateY(-2px); border-color: var(--accent); }
+  .stat-card::after {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  }
+  .stat-card.blue::after { background: var(--accent); }
+  .stat-card.purple::after { background: var(--accent2); }
+  .stat-card.green::after { background: var(--accent3); }
+  .stat-card.amber::after { background: var(--warn); }
+  .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .stat-value { font-family: var(--font-head); font-size: 32px; font-weight: 800; margin: 6px 0 2px; }
+  .stat-card.blue .stat-value { color: var(--accent); }
+  .stat-card.purple .stat-value { color: var(--accent2); }
+  .stat-card.green .stat-value { color: var(--accent3); }
+  .stat-card.amber .stat-value { color: var(--warn); }
+  .stat-sub { font-size: 12px; color: var(--muted); }
+  .stat-icon { position: absolute; right: 18px; top: 18px; font-size: 28px; opacity: .15; }
+
+  /* GRID LAYOUT */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 20px; }
+
+  /* CARDS */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .card-title {
+    font-family: var(--font-head); font-size: 15px; font-weight: 700;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-body { padding: 20px; }
+
+  /* PATIENT LIST */
+  .patient-item {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer; transition: background .15s;
+  }
+  .patient-item:last-child { border-bottom: none; }
+  .patient-item:hover { background: rgba(0,212,255,0.04); }
+  .patient-item.selected { background: rgba(0,212,255,0.08); border-left: 3px solid var(--accent); }
+  .patient-avatar {
+    width: 42px; height: 42px; border-radius: 10px;
+    background: linear-gradient(135deg, #1a2e4a, #0c1628);
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-head); font-weight: 700; font-size: 15px; color: var(--accent);
+    flex-shrink: 0;
+  }
+  .patient-name { font-size: 14px; font-weight: 600; }
+  .patient-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .patient-status {
+    margin-left: auto; flex-shrink: 0;
+    width: 8px; height: 8px; border-radius: 50%;
+  }
+  .status-ok { background: var(--accent3); box-shadow: 0 0 6px var(--accent3); }
+  .status-warn { background: var(--warn); box-shadow: 0 0 6px var(--warn); }
+  .status-alert { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+
+  /* EMOTION BADGES */
+  .emotion-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .emotion-chip {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 10px;
+    text-align: center;
+    transition: all .2s;
+  }
+  .emotion-chip:hover { border-color: var(--accent); }
+  .emotion-emoji { font-size: 26px; display: block; }
+  .emotion-label { font-size: 11px; color: var(--muted); margin-top: 4px; display: block; }
+  .emotion-pct { font-family: var(--font-mono); font-size: 13px; font-weight: 500; color: var(--text); display: block; }
+
+  /* GPS */
+  .gps-map {
+    background: var(--surface);
+    border-radius: 10px;
+    height: 200px;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 14px;
+    border: 1px solid var(--border);
+  }
+  .map-grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.06) 1px, transparent 1px);
+    background-size: 30px 30px;
+  }
+  .map-pin {
+    position: absolute; transform: translate(-50%, -100%);
+    font-size: 28px; filter: drop-shadow(0 0 8px rgba(0,212,255,.6));
+    animation: float 3s ease-in-out infinite;
+  }
+  @keyframes float { 0%,100%{transform:translate(-50%,-100%)} 50%{transform:translate(-50%,-110%)} }
+  .map-ripple {
+    position: absolute; transform: translate(-50%, -50%);
+    width: 60px; height: 60px; border-radius: 50%;
+    border: 2px solid rgba(0,212,255,.3);
+    animation: ripple 2s ease-out infinite;
+  }
+  @keyframes ripple { 0%{transform:translate(-50%,-50%) scale(.5);opacity:1} 100%{transform:translate(-50%,-50%) scale(2);opacity:0} }
+  .gps-coords {
+    font-family: var(--font-mono); font-size: 12px;
+    color: var(--accent); background: rgba(0,212,255,.07);
+    padding: 8px 12px; border-radius: 8px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .gps-time { font-size: 11px; color: var(--muted); }
+
+  /* GAME METRICS */
+  .game-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 10px;
+    transition: all .2s;
+    cursor: pointer;
+  }
+  .game-card:last-child { margin-bottom: 0; }
+  .game-card:hover { border-color: var(--accent); background: rgba(0,212,255,.04); }
+  .game-icon { font-size: 28px; }
+  .game-name { font-size: 13px; font-weight: 600; }
+  .game-stats { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .game-score {
+    margin-left: auto; text-align: right;
+  }
+  .game-score-val {
+    font-family: var(--font-head); font-size: 20px; font-weight: 800; color: var(--accent3);
+  }
+  .game-trend { font-size: 11px; color: var(--accent3); }
+  .game-trend.down { color: var(--danger); }
+
+  /* PROGRESS BAR */
+  .prog-bar {
+    background: var(--surface);
+    border-radius: 100px;
+    height: 6px; overflow: hidden; margin-top: 6px;
+  }
+  .prog-fill {
+    height: 100%; border-radius: 100px;
+    transition: width 1s ease;
+  }
+  .fill-accent { background: linear-gradient(90deg, var(--accent2), var(--accent)); }
+  .fill-green { background: var(--accent3); }
+  .fill-warn { background: var(--warn); }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    padding: 10px 14px; text-align: left;
+    font-size: 10px; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--muted); border-bottom: 1px solid var(--border);
+    font-weight: 600;
+  }
+  tbody td { padding: 12px 14px; border-bottom: 1px solid rgba(26,46,74,.5); }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: rgba(0,212,255,.03); }
+  .tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 600;
+  }
+  .tag-green { background: rgba(16,185,129,.15); color: var(--accent3); }
+  .tag-amber { background: rgba(245,158,11,.15); color: var(--warn); }
+  .tag-red { background: rgba(239,68,68,.15); color: var(--danger); }
+  .tag-blue { background: rgba(0,212,255,.1); color: var(--accent); }
+
+  /* CHART CONTAINER */
+  .chart-wrap { position: relative; height: 220px; }
+
+  /* MODAL */
+  .modal-backdrop {
+    display: none; position: fixed; inset: 0;
+    background: rgba(6,13,26,.85); backdrop-filter: blur(8px);
+    z-index: 200; align-items: center; justify-content: center;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 28px; width: 90%; max-width: 700px;
+    max-height: 85vh; overflow-y: auto;
+  }
+  .modal-title { font-family: var(--font-head); font-size: 20px; font-weight: 700; margin-bottom: 20px; }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 28px; right: 28px;
+    background: var(--card); border: 1px solid var(--accent3);
+    color: var(--accent3); padding: 12px 20px; border-radius: 10px;
+    font-size: 13px; font-weight: 600; z-index: 300;
+    transform: translateY(80px); opacity: 0;
+    transition: all .3s; pointer-events: none;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+
+  /* LOADING */
+  .spinner {
+    display: inline-block; width: 16px; height: 16px;
+    border: 2px solid rgba(0,212,255,.2);
+    border-top-color: var(--accent);
+    border-radius: 50%; animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* SECTION TITLE */
+  .section-title {
+    font-family: var(--font-head); font-size: 18px; font-weight: 700;
+    margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+  }
+  .section-title::before {
+    content: ''; width: 4px; height: 20px; border-radius: 2px;
+    background: var(--accent);
+  }
+
+  /* DETAIL VIEW */
+  #patient-detail { display: none; }
+  #patient-detail.visible { display: block; }
+  #patient-list-view { display: block; }
+  #patient-list-view.hidden { display: none; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+
+  .back-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 14px; border-radius: 8px;
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--muted); font-size: 13px; font-weight: 500;
+    cursor: pointer; margin-bottom: 20px; transition: all .2s;
+  }
+  .back-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+  .metric-row {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px;
+  }
+  .metric-mini {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px;
+  }
+  .metric-mini-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .metric-mini-val { font-family: var(--font-head); font-size: 22px; font-weight: 800; margin-top: 4px; }
+  .col-accent { color: var(--accent); }
+  .col-green { color: var(--accent3); }
+  .col-warn { color: var(--warn); }
+
+  .timeline-item {
+    display: flex; gap: 14px; padding-bottom: 18px;
+    position: relative;
+  }
+  .timeline-item::before {
+    content: ''; position: absolute; left: 15px; top: 30px; bottom: 0;
+    width: 1px; background: var(--border);
+  }
+  .timeline-item:last-child::before { display: none; }
+  .timeline-dot {
+    width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+    border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; background: var(--surface);
+  }
+  .timeline-content { flex: 1; padding-top: 4px; }
+  .timeline-title { font-size: 13px; font-weight: 600; }
+  .timeline-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .empty-state {
+    text-align: center; padding: 40px 20px;
+    color: var(--muted);
+  }
+  .empty-state .icon { font-size: 40px; margin-bottom: 10px; }
+
+  @media (max-width: 1100px) {
+    .stats-row { grid-template-columns: repeat(2,1fr); }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-mark">🧠 NeuroWatch</div>
+    <div class="logo-sub">Alzheimer's Care Platform</div>
+  </div>
+  <nav class="nav">
+    <div class="nav-section">Overview</div>
+    <div class="nav-item active" onclick="showSection('dashboard')">
+      <span class="icon">🏠</span> Dashboard
+    </div>
+    <div class="nav-item" onclick="showSection('patients')">
+      <span class="icon">👥</span> All Patients
+    </div>
+    <div class="nav-section">Monitoring</div>
+    <div class="nav-item" onclick="showSection('gps')">
+      <span class="icon">📍</span> GPS Tracking
+    </div>
+    <div class="nav-item" onclick="showSection('emotions')">
+      <span class="icon">💙</span> Emotion Log
+    </div>
+    <div class="nav-item" onclick="showSection('games')">
+      <span class="icon">🎮</span> Game Activity
+    </div>
+    <div class="nav-section">Reports</div>
+    <div class="nav-item" onclick="showSection('reports')">
+      <span class="icon">📊</span> Reports
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="doctor-info">
+      <div class="doctor-avatar" id="doc-avatar">DR</div>
+      <div>
+        <div class="doctor-name" id="doc-name">Dr. Admin</div>
+        <div class="doctor-role">Neurologist</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN CONTENT -->
+<main class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="page-title">Dashboard</div>
+    <div class="topbar-actions">
+      <span class="badge-live">Live Monitoring</span>
+      <button class="btn btn-ghost" onclick="refreshData()">⟳ Refresh</button>
+      <button class="btn btn-primary" onclick="openAddPatient()">+ Add Patient</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- DASHBOARD SECTION -->
+    <div id="section-dashboard">
+      <div class="stats-row" id="stats-row">
+        <div class="stat-card blue">
+          <div class="stat-icon">👥</div>
+          <div class="stat-label">Total Patients</div>
+          <div class="stat-value" id="stat-total">—</div>
+          <div class="stat-sub">Under your care</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-icon">✅</div>
+          <div class="stat-label">Stable</div>
+          <div class="stat-value" id="stat-stable">—</div>
+          <div class="stat-sub">Normal condition</div>
+        </div>
+        <div class="stat-card amber">
+          <div class="stat-icon">⚠️</div>
+          <div class="stat-label">Needs Attention</div>
+          <div class="stat-value" id="stat-warn">—</div>
+          <div class="stat-sub">Monitor closely</div>
+        </div>
+        <div class="stat-card purple">
+          <div class="stat-icon">🎮</div>
+          <div class="stat-label">Games Today</div>
+          <div class="stat-value" id="stat-games">—</div>
+          <div class="stat-sub">Sessions completed</div>
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <!-- PATIENT LIST -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">👥 My Patients</div>
+            <span id="patient-count" style="font-size:12px;color:var(--muted)">Loading...</span>
+          </div>
+          <div id="patient-list">
+            <div class="empty-state"><div class="spinner"></div><p style="margin-top:10px">Loading patients...</p></div>
+          </div>
+        </div>
+
+        <!-- RIGHT COLUMN -->
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <!-- EMOTION SUMMARY -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">💙 Today's Emotions</div>
+              <span style="font-size:11px;color:var(--muted)" id="emotion-updated">—</span>
+            </div>
+            <div class="card-body">
+              <div class="emotion-grid" id="emotion-summary">
+                <div class="emotion-chip"><span class="emotion-emoji">😊</span><span class="emotion-label">Happy</span><span class="emotion-pct">—</span></div>
+                <div class="emotion-chip"><span class="emotion-emoji">😰</span><span class="emotion-label">Anxious</span><span class="emotion-pct">—</span></div>
+                <div class="emotion-chip"><span class="emotion-emoji">😔</span><span class="emotion-label">Sad</span><span class="emotion-pct">—</span></div>
+                <div class="emotion-chip"><span class="emotion-emoji">😤</span><span class="emotion-label">Agitated</span><span class="emotion-pct">—</span></div>
+                <div class="emotion-chip"><span class="emotion-emoji">😐</span><span class="emotion-label">Neutral</span><span class="emotion-pct">—</span></div>
+                <div class="emotion-chip"><span class="emotion-emoji">😴</span><span class="emotion-label">Fatigued</span><span class="emotion-pct">—</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- GPS SNAPSHOT -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">📍 GPS Snapshot</div>
+              <button class="btn btn-ghost" style="padding:5px 10px;font-size:11px" onclick="showSection('gps')">View All</button>
+            </div>
+            <div class="card-body" style="padding-top:14px">
+              <div class="gps-map" id="mini-map">
+                <div class="map-grid"></div>
+                <div class="map-pin" style="left:50%;top:55%">📍</div>
+                <div class="map-ripple" style="left:50%;top:55%"></div>
+              </div>
+              <div class="gps-coords" id="gps-latest">
+                <span>Loading GPS...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- GAME METRICS -->
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🎮 Game Sessions — Today</div>
+            <button class="btn btn-ghost" style="padding:5px 10px;font-size:11px" onclick="showSection('games')">See All</button>
+          </div>
+          <div class="card-body" id="game-summary">
+            <div class="empty-state"><div class="spinner"></div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📈 Cognitive Improvement</div>
+          </div>
+          <div class="card-body">
+            <div class="chart-wrap">
+              <canvas id="improvement-chart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RECENT ACTIVITY TABLE -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-header">
+          <div class="card-title">📋 Recent Patient Activity</div>
+          <button class="btn btn-ghost" style="padding:5px 10px;font-size:11px" onclick="downloadReport('all')">⬇ Download Report</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Patient</th>
+                <th>Age / Stage</th>
+                <th>Last Emotion</th>
+                <th>GPS Status</th>
+                <th>Games Played</th>
+                <th>Improvement</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="activity-table">
+              <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:30px"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div><!-- /dashboard -->
+
+    <!-- GPS SECTION -->
+    <div id="section-gps" style="display:none">
+      <div class="section-title">📍 GPS Tracking — All Patients</div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Live Location Feed</div>
+          <button class="btn btn-primary" onclick="downloadReport('gps')">⬇ Download GPS Report</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Patient</th><th>Latitude</th><th>Longitude</th><th>Address</th><th>Last Updated</th><th>Status</th></tr>
+            </thead>
+            <tbody id="gps-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- EMOTIONS SECTION -->
+    <div id="section-emotions" style="display:none">
+      <div class="section-title">💙 Emotion Log</div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Emotion Records</div>
+          <button class="btn btn-primary" onclick="downloadReport('emotions')">⬇ Download Emotion Report</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Patient</th><th>Emotion</th><th>Confidence</th><th>Notes</th><th>Recorded At</th></tr>
+            </thead>
+            <tbody id="emotion-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- GAMES SECTION -->
+    <div id="section-games" style="display:none">
+      <div class="section-title">🎮 Game Activity</div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">All Game Sessions</div>
+          <button class="btn btn-primary" onclick="downloadReport('games')">⬇ Download Games Report</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Patient</th><th>Game</th><th>Score</th><th>Duration</th><th>Improvement</th><th>Date</th></tr>
+            </thead>
+            <tbody id="games-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- REPORTS SECTION -->
+    <div id="section-reports" style="display:none">
+      <div class="section-title">📊 Patient Reports</div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Download Reports</div>
+        </div>
+        <div class="card-body">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px" id="report-cards"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PATIENTS SECTION -->
+    <div id="section-patients" style="display:none">
+      <div class="section-title">👥 All Patients</div>
+      <!-- list view -->
+      <div id="patient-list-view">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Patient Registry</div>
+            <button class="btn btn-primary" onclick="openAddPatient()">+ Add Patient</button>
+          </div>
+          <div id="patients-full-list"></div>
+        </div>
+      </div>
+      <!-- detail view -->
+      <div id="patient-detail">
+        <div class="back-btn" onclick="closeDetail()">← Back to Patients</div>
+        <div id="detail-content"></div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</main>
+
+<!-- ADD PATIENT MODAL -->
+<div class="modal-backdrop" id="add-modal">
+  <div class="modal">
+    <div class="modal-title">+ Add New Patient</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div>
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px">Full Name *</label>
+        <input id="p-name" type="text" placeholder="Patient full name" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:13px;font-family:var(--font-body)"/>
+      </div>
+      <div>
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px">Age *</label>
+        <input id="p-age" type="number" placeholder="Age" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:13px;font-family:var(--font-body)"/>
+      </div>
+      <div>
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px">Gender</label>
+        <select id="p-gender" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:13px;font-family:var(--font-body)">
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px">Alzheimer Stage</label>
+        <select id="p-stage" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:13px;font-family:var(--font-body)">
+          <option value="Early">Early</option>
+          <option value="Middle">Middle</option>
+          <option value="Late">Late</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px">Caregiver Name</label>
+        <input id="p-caregiver" type="text" placeholder="Caregiver" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:13px;font-family:var(--font-body)"/>
+      </div>
+      <div>
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px">Caregiver Phone</label>
+        <input id="p-phone" type="text" placeholder="+1 (555) 000-0000" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:13px;font-family:var(--font-body)"/>
+      </div>
+    </div>
+    <div style="margin-top:14px">
+      <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px">Medical Notes</label>
+      <textarea id="p-notes" rows="3" placeholder="Diagnosis notes, medication, etc." style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:13px;font-family:var(--font-body);resize:vertical"></textarea>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="savePatient()">Save Patient</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">✓ <span id="toast-msg">Success</span></div>
+
+<script>
+// ═══════════════════════════════════════════════
+// SUPABASE CONFIG
+// ═══════════════════════════════════════════════
+const SUPA_URL = "https://bmybtwrgosqxfvwkytui.supabase.co";
+const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJteWJ0d3Jnb3NxeGZ2d2t5dHVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MDgzNjYsImV4cCI6MjA5MTI4NDM2Nn0.T9gQN6E950yklyLpSxkpCFkNjavi8jaNn4YscHY712w";
+
+const { createClient } = supabase;
+const sb = createClient(SUPA_URL, SUPA_KEY);
+
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+let patients = [];
+let gpsRecords = [];
+let emotionRecords = [];
+let gameRecords = [];
+let currentSection = 'dashboard';
+let improvChart = null;
+
+// ═══════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════
+function showSection(name) {
+  document.querySelectorAll('[id^="section-"]').forEach(el => el.style.display = 'none');
+  document.getElementById('section-' + name).style.display = 'block';
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(el => {
+    if (el.textContent.toLowerCase().includes(name === 'dashboard' ? 'dash' : name.slice(0,4)))
+      el.classList.add('active');
+  });
+  const titles = {
+    dashboard:'Dashboard', patients:'All Patients', gps:'GPS Tracking',
+    emotions:'Emotion Log', games:'Game Activity', reports:'Reports'
+  };
+  document.getElementById('page-title').textContent = titles[name] || name;
+  currentSection = name;
+  if (name === 'gps') renderGPSTable();
+  if (name === 'emotions') renderEmotionTable();
+  if (name === 'games') renderGamesTable();
+  if (name === 'reports') renderReportCards();
+  if (name === 'patients') renderFullPatientList();
+}
+
+// ═══════════════════════════════════════════════
+// DATA LOADING
+// ═══════════════════════════════════════════════
+async function loadAll() {
+  await ensureTables();
+  await Promise.all([loadPatients(), loadGPS(), loadEmotions(), loadGames()]);
+  renderDashboard();
+}
+
+async function ensureTables() {
+  // Tables must exist in Supabase. We'll just try to fetch and silently skip errors.
+}
+
+async function loadPatients() {
+  const { data, error } = await sb.from('patients').select('*').order('created_at', { ascending: false });
+  if (!error && data) patients = data;
+  else patients = getSamplePatients();
+}
+
+async function loadGPS() {
+  const { data, error } = await sb.from('gps_locations').select('*').order('timestamp', { ascending: false });
+  if (!error && data) gpsRecords = data;
+  else gpsRecords = getSampleGPS();
+}
+
+async function loadEmotions() {
+  const { data, error } = await sb.from('emotions').select('*').order('recorded_at', { ascending: false });
+  if (!error && data) emotionRecords = data;
+  else emotionRecords = getSampleEmotions();
+}
+
+async function loadGames() {
+  const { data, error } = await sb.from('game_results').select('*').order('played_at', { ascending: false });
+  if (!error && data) gameRecords = data;
+  else gameRecords = getSampleGames();
+}
+
+// ═══════════════════════════════════════════════
+// SAMPLE / FALLBACK DATA
+// ═══════════════════════════════════════════════
+function getSamplePatients() {
+  return [
+    {id:'p1', name:'Jayashrii', age:74, gender:'Female', stage:'Early', caregiver:'anupama', phone:'+1 555-0101', notes:'Mild memory lapses. On Donepezil 10mg.', status:'stable', created_at: new Date().toISOString()},
+    {id:'p2', name:'sham', age:81, gender:'Male', stage:'Middle', caregiver:'thanishk', phone:'+1 555-0202', notes:'Moderate confusion. Requires daily supervision.', status:'attention', created_at: new Date().toISOString()},
+    {id:'p3', name:'kannama', age:68, gender:'Female', stage:'Early', caregiver:'anuja', phone:'+1 555-0303', notes:'Recent diagnosis. Cognitive exercises started.', status:'stable', created_at: new Date().toISOString()},
+    {id:'p4', name:'mohini', age:77, gender:'Male', stage:'Late', caregiver:'manahor', phone:'+1 555-0404', notes:'Advanced stage. Memory care facility.', status:'alert', created_at: new Date().toISOString()},
+  ];
+}
+function getSampleGPS() {
+  const now = new Date().toISOString();
+  return [
+    {id:'g1', patient_id:'p1', patient_name:'jayashrii', latitude:13.0827, longitude:80.2707, address:'Anna Nagar, Chennai', timestamp: now, status:'Home'},
+    {id:'g2', patient_id:'p2', patient_name:'sham', latitude:13.0569, longitude:80.2425, address:'T. Nagar, Chennai', timestamp: now, status:'Home'},
+    {id:'g3', patient_id:'p3', patient_name:'kannama', latitude:12.9716, longitude:80.2209, address:'Tambaram, Chennai', timestamp: now, status:'Clinic'},
+    {id:'g4', patient_id:'p4', patient_name:'mohini', latitude:13.1067, longitude:80.2921, address:'Kolathur, Chennai', timestamp: now, status:'Care Facility'},
+  ];
+}
+function getSampleEmotions() {
+  const now = new Date().toISOString();
+  return [
+    {id:'e1', patient_id:'p1', patient_name:'jayashrii', emotion:'Happy', confidence:82, notes:'Engaged in morning activities', recorded_at: now},
+    {id:'e2', patient_id:'p2', patient_name:'sham', emotion:'Anxious', confidence:74, notes:'Restless after lunch', recorded_at: now},
+    {id:'e3', patient_id:'p3', patient_name:'kannama', emotion:'Neutral', confidence:90, notes:'Calm, completed exercises', recorded_at: now},
+    {id:'e4', patient_id:'p4', patient_name:'mohini', emotion:'Sad', confidence:68, notes:'Did not recognize caregiver', recorded_at: now},
+    {id:'e5', patient_id:'p1', patient_name:'jayashrii', emotion:'Happy', confidence:78, notes:'Enjoyed music therapy', recorded_at: now},
+  ];
+}
+function getSampleGames() {
+  const now = new Date().toISOString();
+  return [
+    {id:'gm1', patient_id:'p1', patient_name:'jayashrii', game:'Memory Match', score:85, prev_score:72, duration_min:12, played_at: now},
+    {id:'gm2', patient_id:'p2', patient_name:'sham', game:'Word Recall', score:54, prev_score:61, duration_min:8, played_at: now},
+    {id:'gm3', patient_id:'p3', patient_name:'kannama', game:'Pattern Recognition', score:91, prev_score:84, duration_min:15, played_at: now},
+    {id:'gm4', patient_id:'p4', patient_name:'mohini', game:'Memory Match', score:38, prev_score:42, duration_min:6, played_at: now},
+    {id:'gm5', patient_id:'p1', patient_name:'jayashrii', game:'Sorting Task', score:79, prev_score:65, duration_min:10, played_at: now},
+  ];
+}
+
+// ═══════════════════════════════════════════════
+// DASHBOARD RENDER
+// ═══════════════════════════════════════════════
+function renderDashboard() {
+  const stable = patients.filter(p => p.status === 'stable').length;
+  const warn = patients.filter(p => p.status === 'attention' || p.status === 'alert').length;
+  document.getElementById('stat-total').textContent = patients.length;
+  document.getElementById('stat-stable').textContent = stable;
+  document.getElementById('stat-warn').textContent = warn;
+  document.getElementById('stat-games').textContent = gameRecords.length;
+
+  renderPatientList();
+  renderEmotionSummary();
+  renderGPSLatest();
+  renderGameSummary();
+  renderActivityTable();
+  renderImprovementChart();
+}
+
+function renderPatientList() {
+  const el = document.getElementById('patient-list');
+  document.getElementById('patient-count').textContent = patients.length + ' patients';
+  if (!patients.length) { el.innerHTML = '<div class="empty-state"><div class="icon">👥</div><p>No patients yet</p></div>'; return; }
+  el.innerHTML = patients.map(p => {
+    const initials = p.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const sc = p.status === 'stable' ? 'status-ok' : p.status === 'attention' ? 'status-warn' : 'status-alert';
+    return `<div class="patient-item" onclick="openPatientDetail('${p.id}')">
+      <div class="patient-avatar">${initials}</div>
+      <div>
+        <div class="patient-name">${p.name}</div>
+        <div class="patient-meta">${p.age}y • ${p.gender} • ${p.stage} Stage</div>
+      </div>
+      <div class="patient-status ${sc}"></div>
+    </div>`;
+  }).join('');
+}
+
+function renderEmotionSummary() {
+  const emotions = ['Happy','Anxious','Sad','Agitated','Neutral','Fatigued'];
+  const emojis = ['😊','😰','😔','😤','😐','😴'];
+  const counts = {};
+  emotions.forEach(e => counts[e] = 0);
+  emotionRecords.forEach(r => { if (counts[r.emotion] !== undefined) counts[r.emotion]++; });
+  const total = emotionRecords.length || 1;
+  const el = document.getElementById('emotion-summary');
+  el.innerHTML = emotions.map((e,i) => {
+    const pct = Math.round(counts[e] / total * 100);
+    return `<div class="emotion-chip">
+      <span class="emotion-emoji">${emojis[i]}</span>
+      <span class="emotion-label">${e}</span>
+      <span class="emotion-pct">${pct}%</span>
+    </div>`;
+  }).join('');
+  document.getElementById('emotion-updated').textContent = 'Updated just now';
+}
+
+function renderGPSLatest() {
+  const latest = gpsRecords[0];
+  const el = document.getElementById('gps-latest');
+  if (!latest) { el.innerHTML = '<span>No GPS data</span>'; return; }
+  el.innerHTML = `
+    <div>
+      <div style="font-size:12px;color:var(--muted)">Latest: ${latest.patient_name || 'Patient'}</div>
+      <div>${latest.address || `${latest.latitude?.toFixed(4)}, ${latest.longitude?.toFixed(4)}`}</div>
+    </div>
+    <div class="gps-time">${formatTime(latest.timestamp)}</div>
+  `;
+}
+
+function renderGameSummary() {
+  const el = document.getElementById('game-summary');
+  if (!gameRecords.length) { el.innerHTML = '<div class="empty-state"><div class="icon">🎮</div><p>No games today</p></div>'; return; }
+  const shown = gameRecords.slice(0,4);
+  el.innerHTML = shown.map(g => {
+    const imp = g.score - (g.prev_score || g.score);
+    const trendCls = imp >= 0 ? '' : 'down';
+    const trendIcon = imp >= 0 ? '↑' : '↓';
+    return `<div class="game-card">
+      <div class="game-icon">🎮</div>
+      <div>
+        <div class="game-name">${g.game}</div>
+        <div class="game-stats">${g.patient_name} • ${g.duration_min || '—'} min</div>
+      </div>
+      <div class="game-score">
+        <div class="game-score-val">${g.score}</div>
+        <div class="game-trend ${trendCls}">${trendIcon} ${Math.abs(imp)} pts</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderActivityTable() {
+  const el = document.getElementById('activity-table');
+  if (!patients.length) { el.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:30px">No data available</td></tr>'; return; }
+  el.innerHTML = patients.map(p => {
+    const lastEmo = emotionRecords.find(e => e.patient_id === p.id);
+    const lastGPS = gpsRecords.find(g => g.patient_id === p.id);
+    const lastGame = gameRecords.find(g => g.patient_id === p.id);
+    const imp = lastGame ? lastGame.score - (lastGame.prev_score || lastGame.score) : 0;
+    const stageCls = p.stage === 'Early' ? 'tag-green' : p.stage === 'Middle' ? 'tag-amber' : 'tag-red';
+    const impCls = imp > 0 ? 'tag-green' : imp < 0 ? 'tag-red' : 'tag-blue';
+    return `<tr>
+      <td><b>${p.name}</b></td>
+      <td>${p.age}y &nbsp;<span class="tag ${stageCls}">${p.stage}</span></td>
+      <td>${lastEmo ? `<span class="tag tag-blue">${lastEmo.emotion}</span>` : '—'}</td>
+      <td>${lastGPS ? `<span class="tag tag-green">📍 ${lastGPS.status || 'Tracked'}</span>` : '—'}</td>
+      <td>${lastGame ? lastGame.game : '—'}</td>
+      <td><span class="tag ${impCls}">${imp > 0 ? '↑ +' : imp < 0 ? '↓ ' : '→ '}${Math.abs(imp)}</span></td>
+      <td>
+        <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="openPatientDetail('${p.id}')">View</button>
+        <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;margin-left:4px" onclick="downloadReport('patient','${p.id}')">⬇</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function renderImprovementChart() {
+  const ctx = document.getElementById('improvement-chart').getContext('2d');
+  if (improvChart) improvChart.destroy();
+  const labels = patients.map(p => p.name.split(' ')[0]);
+  const scores = patients.map(p => {
+    const game = gameRecords.find(g => g.patient_id === p.id);
+    return game ? game.score : 0;
+  });
+  const prev = patients.map(p => {
+    const game = gameRecords.find(g => g.patient_id === p.id);
+    return game ? (game.prev_score || game.score) : 0;
+  });
+  improvChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Current Score', data: scores, backgroundColor: 'rgba(0,212,255,0.7)', borderRadius: 6 },
+        { label: 'Previous Score', data: prev, backgroundColor: 'rgba(124,58,237,0.5)', borderRadius: 6 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#6b8299', font: { family: 'DM Sans' }, boxWidth: 12 } } },
+      scales: {
+        x: { ticks: { color: '#6b8299' }, grid: { color: 'rgba(26,46,74,.5)' } },
+        y: { ticks: { color: '#6b8299' }, grid: { color: 'rgba(26,46,74,.5)' }, max: 100 }
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════
+// SECTION TABLES
+// ═══════════════════════════════════════════════
+function renderGPSTable() {
+  const el = document.getElementById('gps-table');
+  if (!gpsRecords.length) { el.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:30px">No GPS data</td></tr>'; return; }
+  el.innerHTML = gpsRecords.map(g => `<tr>
+    <td><b>${g.patient_name}</b></td>
+    <td><span style="font-family:var(--font-mono);font-size:12px;color:var(--accent)">${g.latitude}</span></td>
+    <td><span style="font-family:var(--font-mono);font-size:12px;color:var(--accent)">${g.longitude}</span></td>
+    <td>${g.address || '—'}</td>
+    <td style="color:var(--muted);font-size:12px">${formatTime(g.timestamp)}</td>
+    <td><span class="tag tag-green">📍 ${g.status || 'Active'}</span></td>
+  </tr>`).join('');
+}
+
+function renderEmotionTable() {
+  const el = document.getElementById('emotion-table');
+  if (!emotionRecords.length) { el.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:30px">No emotion data</td></tr>'; return; }
+  const emojiMap = {Happy:'😊',Anxious:'😰',Sad:'😔',Agitated:'😤',Neutral:'😐',Fatigued:'😴'};
+  const clsMap = {Happy:'tag-green',Anxious:'tag-amber',Sad:'tag-blue',Agitated:'tag-red',Neutral:'tag-blue',Fatigued:'tag-amber'};
+  el.innerHTML = emotionRecords.map(e => `<tr>
+    <td><b>${e.patient_name}</b></td>
+    <td><span class="tag ${clsMap[e.emotion]||'tag-blue'}">${emojiMap[e.emotion]||'🔵'} ${e.emotion}</span></td>
+    <td>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-family:var(--font-mono);font-size:12px">${e.confidence}%</span>
+        <div class="prog-bar" style="width:80px"><div class="prog-fill fill-accent" style="width:${e.confidence}%"></div></div>
+      </div>
+    </td>
+    <td style="color:var(--muted);font-size:12px">${e.notes || '—'}</td>
+    <td style="color:var(--muted);font-size:12px">${formatTime(e.recorded_at)}</td>
+  </tr>`).join('');
+}
+
+function renderGamesTable() {
+  const el = document.getElementById('games-table');
+  if (!gameRecords.length) { el.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:30px">No game data</td></tr>'; return; }
+  el.innerHTML = gameRecords.map(g => {
+    const imp = g.score - (g.prev_score || g.score);
+    const impCls = imp > 0 ? 'tag-green' : imp < 0 ? 'tag-red' : 'tag-blue';
+    const gameIcons = {'Memory Match':'🧩','Word Recall':'📝','Pattern Recognition':'🔷','Sorting Task':'📦'};
+    return `<tr>
+      <td><b>${g.patient_name}</b></td>
+      <td>${gameIcons[g.game]||'🎮'} ${g.game}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-family:var(--font-head);font-size:16px;font-weight:800;color:var(--accent3)">${g.score}</span>
+          <div class="prog-bar" style="width:70px"><div class="prog-fill fill-green" style="width:${g.score}%"></div></div>
+        </div>
+      </td>
+      <td>${g.duration_min ? g.duration_min + ' min' : '—'}</td>
+      <td><span class="tag ${impCls}">${imp > 0 ? '↑ +' : imp < 0 ? '↓ ' : '→ '}${Math.abs(imp)} pts</span></td>
+      <td style="color:var(--muted);font-size:12px">${formatTime(g.played_at)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderFullPatientList() {
+  const el = document.getElementById('patients-full-list');
+  if (!patients.length) { el.innerHTML = '<div class="empty-state"><div class="icon">👥</div><p>No patients added yet</p></div>'; return; }
+  el.innerHTML = patients.map(p => {
+    const initials = p.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const sc = p.status === 'stable' ? 'status-ok' : p.status === 'attention' ? 'status-warn' : 'status-alert';
+    return `<div class="patient-item" onclick="openPatientDetail('${p.id}')">
+      <div class="patient-avatar">${initials}</div>
+      <div style="flex:1">
+        <div class="patient-name">${p.name}</div>
+        <div class="patient-meta">${p.age}y • ${p.gender} • ${p.stage} Stage • Caregiver: ${p.caregiver || '—'}</div>
+      </div>
+      <button class="btn btn-ghost" style="padding:5px 12px;font-size:12px;margin-right:8px" onclick="event.stopPropagation();downloadReport('patient','${p.id}')">⬇ Report</button>
+      <div class="patient-status ${sc}" style="margin-left:0"></div>
+    </div>`;
+  }).join('');
+}
+
+function renderReportCards() {
+  const el = document.getElementById('report-cards');
+  el.innerHTML = patients.map(p => {
+    const stageCls = p.stage === 'Early' ? 'var(--accent3)' : p.stage === 'Middle' ? 'var(--warn)' : 'var(--danger)';
+    return `<div class="card" style="border-color:${stageCls}20">
+      <div style="padding:18px">
+        <div style="font-size:20px;margin-bottom:10px">📋</div>
+        <div style="font-weight:700;font-family:var(--font-head);margin-bottom:4px">${p.name}</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:14px">${p.age}y • ${p.stage} Stage</div>
+        <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="downloadReport('patient','${p.id}')">⬇ Download Full Report</button>
+      </div>
+    </div>`;
+  }).join('') + `<div class="card">
+    <div style="padding:18px">
+      <div style="font-size:20px;margin-bottom:10px">📊</div>
+      <div style="font-weight:700;font-family:var(--font-head);margin-bottom:4px">All Patients Report</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Combined summary report</div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="downloadReport('all')">⬇ Download All</button>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════
+// PATIENT DETAIL
+// ═══════════════════════════════════════════════
+function openPatientDetail(id) {
+  const p = patients.find(x => x.id === id || x.id == id);
+  if (!p) return;
+
+  showSection('patients');
+  document.getElementById('patient-list-view').classList.add('hidden');
+  const detail = document.getElementById('patient-detail');
+  detail.classList.add('visible');
+
+  const patGPS = gpsRecords.filter(g => g.patient_id === p.id);
+  const patEmo = emotionRecords.filter(e => e.patient_id === p.id);
+  const patGames = gameRecords.filter(g => g.patient_id === p.id);
+  const avgScore = patGames.length ? Math.round(patGames.reduce((a,g)=>a+g.score,0)/patGames.length) : 0;
+  const latestGPS = patGPS[0];
+  const latestEmo = patEmo[0];
+
+  const emojiMap = {Happy:'😊',Anxious:'😰',Sad:'😔',Agitated:'😤',Neutral:'😐',Fatigued:'😴'};
+
+  detail.querySelector('#detail-content') ? null : detail.insertAdjacentHTML('beforeend','<div id="detail-content"></div>');
+  document.getElementById('detail-content').innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div style="display:flex;align-items:center;gap:16px">
+        <div class="patient-avatar" style="width:60px;height:60px;font-size:22px;border-radius:14px">${p.name.split(' ').map(w=>w[0]).join('').slice(0,2)}</div>
+        <div>
+          <div style="font-family:var(--font-head);font-size:24px;font-weight:800">${p.name}</div>
+          <div style="color:var(--muted);font-size:13px">${p.age} years • ${p.gender} • ${p.stage} Stage Alzheimer's</div>
+          <div style="color:var(--muted);font-size:12px">Caregiver: ${p.caregiver || '—'} ${p.phone ? '· '+p.phone : ''}</div>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="downloadReport('patient','${p.id}')">⬇ Download Report</button>
+    </div>
+
+    <div class="metric-row">
+      <div class="metric-mini">
+        <div class="metric-mini-label">Avg Game Score</div>
+        <div class="metric-mini-val col-accent">${avgScore}</div>
+      </div>
+      <div class="metric-mini">
+        <div class="metric-mini-label">Games Played</div>
+        <div class="metric-mini-val col-green">${patGames.length}</div>
+      </div>
+      <div class="metric-mini">
+        <div class="metric-mini-label">Last Emotion</div>
+        <div class="metric-mini-val" style="font-size:28px">${latestEmo ? (emojiMap[latestEmo.emotion]||'🔵') : '—'}</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header"><div class="card-title">📍 GPS History</div></div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Location</th><th>Status</th><th>Time</th></tr></thead><tbody>
+          ${patGPS.length ? patGPS.map(g=>`<tr>
+            <td style="font-size:12px">${g.address||`${g.latitude}, ${g.longitude}`}</td>
+            <td><span class="tag tag-green">${g.status||'Active'}</span></td>
+            <td style="color:var(--muted);font-size:11px">${formatTime(g.timestamp)}</td>
+          </tr>`).join('') : '<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:20px">No GPS data</td></tr>'}
+          </tbody></table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">💙 Emotion History</div></div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Emotion</th><th>Confidence</th><th>Time</th></tr></thead><tbody>
+          ${patEmo.length ? patEmo.map(e=>`<tr>
+            <td><span class="tag tag-blue">${emojiMap[e.emotion]||'🔵'} ${e.emotion}</span></td>
+            <td style="font-family:var(--font-mono);font-size:12px">${e.confidence}%</td>
+            <td style="color:var(--muted);font-size:11px">${formatTime(e.recorded_at)}</td>
+          </tr>`).join('') : '<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:20px">No emotion data</td></tr>'}
+          </tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:0">
+      <div class="card-header"><div class="card-title">🎮 Game Performance</div></div>
+      <div class="table-wrap">
+        <table><thead><tr><th>Game</th><th>Score</th><th>Previous</th><th>Improvement</th><th>Duration</th><th>Date</th></tr></thead><tbody>
+        ${patGames.length ? patGames.map(g=>{
+          const imp = g.score-(g.prev_score||g.score);
+          const impCls = imp>0?'tag-green':imp<0?'tag-red':'tag-blue';
+          return `<tr>
+            <td>🎮 ${g.game}</td>
+            <td style="font-family:var(--font-head);font-size:18px;font-weight:800;color:var(--accent3)">${g.score}</td>
+            <td style="color:var(--muted)">${g.prev_score||'—'}</td>
+            <td><span class="tag ${impCls}">${imp>0?'↑ +':imp<0?'↓ ':'→ '}${Math.abs(imp)}</span></td>
+            <td>${g.duration_min?g.duration_min+' min':'—'}</td>
+            <td style="color:var(--muted);font-size:11px">${formatTime(g.played_at)}</td>
+          </tr>`;
+        }).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">No game data</td></tr>'}
+        </tbody></table>
+      </div>
+    </div>
+
+    ${p.notes ? `<div class="card" style="margin-top:20px">
+      <div class="card-header"><div class="card-title">📝 Medical Notes</div></div>
+      <div class="card-body" style="color:var(--muted);font-size:13px;line-height:1.7">${p.notes}</div>
+    </div>` : ''}
+  `;
+}
+
+function closeDetail() {
+  document.getElementById('patient-list-view').classList.remove('hidden');
+  document.getElementById('patient-detail').classList.remove('visible');
+  renderFullPatientList();
+}
+
+// ═══════════════════════════════════════════════
+// ADD PATIENT
+// ═══════════════════════════════════════════════
+function openAddPatient() { document.getElementById('add-modal').classList.add('open'); }
+function closeModal() { document.getElementById('add-modal').classList.remove('open'); }
+
+async function savePatient() {
+  const name = document.getElementById('p-name').value.trim();
+  const age = parseInt(document.getElementById('p-age').value);
+  if (!name || !age) { showToast('Please fill required fields', true); return; }
+
+  const patient = {
+    name,
+    age,
+    gender: document.getElementById('p-gender').value,
+    stage: document.getElementById('p-stage').value,
+    caregiver: document.getElementById('p-caregiver').value,
+    phone: document.getElementById('p-phone').value,
+    notes: document.getElementById('p-notes').value,
+    status: 'stable',
+    created_at: new Date().toISOString()
+  };
+
+  const { data, error } = await sb.from('patients').insert([patient]).select();
+  if (error) {
+    // Supabase table may not exist — add locally
+    patient.id = 'local_' + Date.now();
+    patients.unshift(patient);
+    showToast('Patient added (local mode — Supabase table may need setup)');
+  } else {
+    patients.unshift(data[0]);
+    showToast('Patient saved to Supabase ✓');
+  }
+
+  closeModal();
+  renderDashboard();
+  ['p-name','p-age','p-caregiver','p-phone','p-notes'].forEach(id => document.getElementById(id).value = '');
+}
+
+// ═══════════════════════════════════════════════
+// DOWNLOAD REPORT
+// ═══════════════════════════════════════════════
+function downloadReport(type, patientId) {
+  let content = '';
+  const now = new Date().toLocaleString();
+
+  if (type === 'all' || type === 'patient') {
+    const pts = type === 'patient' ? patients.filter(p => p.id == patientId) : patients;
+    content += `NEUROWATCH — ALZHEIMER CARE PLATFORM\nGenerated: ${now}\n${'='.repeat(60)}\n\n`;
+
+    pts.forEach(p => {
+      const patGPS = gpsRecords.filter(g => g.patient_id === p.id);
+      const patEmo = emotionRecords.filter(e => e.patient_id === p.id);
+      const patGames = gameRecords.filter(g => g.patient_id === p.id);
+      const avgScore = patGames.length ? Math.round(patGames.reduce((a,g)=>a+g.score,0)/patGames.length) : 'N/A';
+      const latestEmo = patEmo[0];
+      const latestGPS = patGPS[0];
+
+      content += `PATIENT: ${p.name}\n${'-'.repeat(40)}\n`;
+      content += `Age: ${p.age}  |  Gender: ${p.gender}  |  Stage: ${p.stage}\n`;
+      content += `Caregiver: ${p.caregiver || '—'}  |  Phone: ${p.phone || '—'}\n`;
+      content += `Status: ${p.status?.toUpperCase() || 'UNKNOWN'}\n`;
+      content += `Notes: ${p.notes || 'None'}\n\n`;
+      content += `LATEST GPS: ${latestGPS ? (latestGPS.address || `${latestGPS.latitude}, ${latestGPS.longitude}`) : 'No data'}\n`;
+      content += `LATEST EMOTION: ${latestEmo ? `${latestEmo.emotion} (${latestEmo.confidence}% confidence)` : 'No data'}\n`;
+      content += `GAME AVG SCORE: ${avgScore}\n\n`;
+
+      if (patGames.length) {
+        content += 'GAME SESSIONS:\n';
+        patGames.forEach(g => {
+          const imp = g.score - (g.prev_score || g.score);
+          content += `  • ${g.game}: Score ${g.score} | Prev ${g.prev_score||'—'} | Change ${imp>0?'+':''}${imp} | ${g.duration_min||'—'}min\n`;
+        });
+        content += '\n';
+      }
+
+      if (patEmo.length) {
+        content += 'EMOTION LOG:\n';
+        patEmo.forEach(e => {
+          content += `  • ${e.emotion} (${e.confidence}%) — ${e.notes || ''} — ${formatTime(e.recorded_at)}\n`;
+        });
+        content += '\n';
+      }
+
+      content += '\n';
+    });
+  } else if (type === 'gps') {
+    content = `GPS TRACKING REPORT\nGenerated: ${now}\n${'='.repeat(60)}\n\n`;
+    gpsRecords.forEach(g => {
+      content += `${g.patient_name}: ${g.address||`${g.latitude},${g.longitude}`} — ${g.status} — ${formatTime(g.timestamp)}\n`;
+    });
+  } else if (type === 'emotions') {
+    content = `EMOTION LOG REPORT\nGenerated: ${now}\n${'='.repeat(60)}\n\n`;
+    emotionRecords.forEach(e => {
+      content += `${e.patient_name}: ${e.emotion} (${e.confidence}%) — ${e.notes||''} — ${formatTime(e.recorded_at)}\n`;
+    });
+  } else if (type === 'games') {
+    content = `GAME ACTIVITY REPORT\nGenerated: ${now}\n${'='.repeat(60)}\n\n`;
+    gameRecords.forEach(g => {
+      const imp = g.score - (g.prev_score || g.score);
+      content += `${g.patient_name}: ${g.game} — Score: ${g.score} — Change: ${imp>0?'+':''}${imp} — ${formatTime(g.played_at)}\n`;
+    });
+  }
+
+  const blob = new Blob([content], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `NeuroWatch_${type}_report_${Date.now()}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Report downloaded ✓');
+}
+
+// ═══════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════
+function formatTime(ts) {
+  if (!ts) return '—';
+  try {
+    const d = new Date(ts);
+    return d.toLocaleString('en-IN', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+  } catch { return ts; }
+}
+
+function showToast(msg, isError) {
+  const el = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  el.style.borderColor = isError ? 'var(--danger)' : 'var(--accent3)';
+  el.style.color = isError ? 'var(--danger)' : 'var(--accent3)';
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+function refreshData() {
+  showToast('Refreshing data...');
+  loadAll();
+}
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  loadAll();
+  // Auto-refresh GPS every 60s
+  setInterval(() => { loadGPS().then(() => { renderGPSLatest(); if (currentSection==='gps') renderGPSTable(); }); }, 60000);
+});
+</script>
+</body>
+</html>

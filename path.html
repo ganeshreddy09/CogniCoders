@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>56 Day Challenge — Cognicare</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink:    #080810;
+  --ink2:   #0d0d1a;
+  --panel:  #0c0c18;
+  --cream:  #f2ede6;
+  --fog:    #9097aa;
+  --fog2:   #5a6070;
+  --iris:   #7b6fff;
+  --iris2:  #a09bff;
+  --green:  #4ade80;
+  --green2: #16a34a;
+  --border: rgba(255,255,255,0.07);
+  --glass:  rgba(255,255,255,0.04);
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 300;
+  background: var(--ink);
+  color: var(--cream);
+  min-height: 100vh;
+  overflow-x: hidden;
+  cursor: none;
+}
+
+/* grain */
+body::before {
+  content:'';
+  position:fixed; inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.038'/%3E%3C/svg%3E");
+  pointer-events:none; z-index:999; opacity:0.5;
+}
+
+/* cursor */
+#cur {
+  width:10px; height:10px; border-radius:50%;
+  background:var(--iris); position:fixed; top:0; left:0;
+  pointer-events:none; z-index:1000;
+  transform:translate(-50%,-50%);
+  transition: width .22s ease, height .22s ease, background .22s ease;
+  mix-blend-mode: screen;
+}
+#cur.big { width:46px; height:46px; background:rgba(123,111,255,.28); }
+
+/* aurora */
+.aur { position:fixed; border-radius:50%; pointer-events:none; z-index:0; }
+.aur-a {
+  width:800px; height:800px;
+  background:radial-gradient(ellipse at 40% 50%, rgba(123,111,255,.1) 0%, transparent 65%);
+  top:-250px; left:-200px;
+  animation: da 18s ease-in-out infinite alternate;
+}
+.aur-b {
+  width:600px; height:600px;
+  background:radial-gradient(ellipse, rgba(74,222,128,.05) 0%, transparent 65%);
+  bottom:-100px; right:-80px;
+  animation: db 22s ease-in-out infinite alternate;
+}
+@keyframes da { from{transform:translate(0,0) scale(1)} to{transform:translate(60px,40px) scale(1.1)} }
+@keyframes db { from{transform:translate(0,0)} to{transform:translate(-40px,-30px) rotate(10deg)} }
+
+/* ── TOPBAR ── */
+.topbar {
+  position:sticky; top:0; z-index:50;
+  height:62px;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 48px;
+  border-bottom:1px solid var(--border);
+  background:rgba(8,8,16,.82);
+  backdrop-filter:blur(16px);
+}
+.topbar-logo {
+  font-family:'Cormorant Garamond',serif;
+  font-size:20px; font-weight:400; letter-spacing:0.06em;
+  text-decoration:none; color:var(--cream);
+}
+.topbar-logo span { color:var(--iris); }
+.topbar-title {
+  font-family:'Cormorant Garamond',serif;
+  font-size:20px; font-weight:300; letter-spacing:0.04em; color:var(--fog);
+}
+.topbar-title em { font-style:italic; color:var(--cream); }
+.reset-btn {
+  font-family:'DM Sans',sans-serif;
+  font-size:11px; letter-spacing:0.13em; text-transform:uppercase;
+  background:none; border:1px solid rgba(239,68,68,.25);
+  color:rgba(252,165,165,.7); padding:8px 18px; border-radius:2px;
+  cursor:none; transition:border-color .25s, color .25s;
+}
+.reset-btn:hover { border-color:rgba(239,68,68,.6); color:#fca5a5; }
+
+/* ── PAGE WRAPPER ── */
+.page { position:relative; z-index:1; padding:60px 48px 80px; max-width:1300px; margin:0 auto; }
+
+/* ── HEADER ── */
+.header { display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:64px; }
+
+.header-left h1 {
+  font-family:'Cormorant Garamond',serif;
+  font-size:clamp(52px,7vw,96px);
+  font-weight:300; line-height:0.95;
+  letter-spacing:-0.025em;
+}
+.header-left h1 em { font-style:italic; color:var(--fog); }
+.header-left p {
+  font-size:14px; color:var(--fog);
+  line-height:1.7; margin-top:18px; max-width:340px;
+}
+
+/* circular progress */
+.ring-wrap {
+  display:flex; flex-direction:column; align-items:center; gap:14px;
+  flex-shrink:0;
+}
+.ring-svg { width:140px; height:140px; }
+.ring-bg   { stroke: rgba(255,255,255,.06); }
+.ring-fill {
+  stroke: var(--iris);
+  stroke-linecap: round;
+  transition: stroke-dashoffset .7s cubic-bezier(.4,0,.2,1);
+}
+.ring-center {
+  position:relative; width:140px; height:140px; margin-top:-140px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+}
+.ring-pct {
+  font-family:'Cormorant Garamond',serif;
+  font-size:38px; font-weight:300; line-height:1; letter-spacing:-0.02em;
+}
+.ring-sub { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--fog2); margin-top:2px; }
+.ring-days { font-size:13px; color:var(--fog); letter-spacing:0.03em; }
+
+/* ── GRID ── */
+.days-grid {
+  display:grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap:10px;
+}
+
+@media (max-width:900px)  { .days-grid { grid-template-columns: repeat(7,1fr); } }
+@media (max-width:700px)  { .days-grid { grid-template-columns: repeat(4,1fr); } }
+
+.day-card {
+  aspect-ratio:1/1;
+  border-radius:10px;
+  border:1px solid var(--border);
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:4px;
+  cursor:none;
+  position:relative; overflow:hidden;
+  transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+  background: var(--glass);
+}
+.day-card::before {
+  content:'';
+  position:absolute; inset:0;
+  background:radial-gradient(circle at 50% 0%, rgba(123,111,255,.12), transparent 70%);
+  opacity:0; transition:opacity .3s;
+}
+.day-card:hover::before { opacity:1; }
+.day-card:not(.locked):hover {
+  transform:translateY(-5px);
+  border-color:rgba(123,111,255,.35);
+  box-shadow:0 12px 32px rgba(123,111,255,.15);
+}
+.day-card.completed {
+  background:rgba(74,222,128,.07);
+  border-color:rgba(74,222,128,.25);
+}
+.day-card.completed:hover {
+  border-color:rgba(74,222,128,.5);
+  box-shadow:0 12px 32px rgba(74,222,128,.12);
+}
+.day-card.unlocked-active {
+  border-color:rgba(123,111,255,.2);
+}
+.day-card.locked {
+  opacity:0.35; cursor:not-allowed;
+}
+.day-card .dc-icon { font-size:18px; line-height:1; }
+.day-card .dc-num {
+  font-size:11px; font-weight:500; color:var(--cream);
+  letter-spacing:0.04em;
+}
+.day-card .dc-prog {
+  font-size:9px; letter-spacing:0.08em;
+  color:var(--fog2);
+}
+.day-card.completed .dc-prog { color:rgba(74,222,128,.7); }
+
+/* mini progress bar inside card */
+.dc-bar-wrap {
+  position:absolute; bottom:0; left:0; right:0; height:2px;
+  background:rgba(255,255,255,.05);
+}
+.dc-bar {
+  height:100%; background:var(--iris); border-radius:0 0 10px 10px;
+  transition:width .4s ease;
+}
+.day-card.completed .dc-bar { background:var(--green); }
+
+/* ── MODAL ── */
+.modal-overlay {
+  position:fixed; inset:0; z-index:200;
+  background:rgba(4,4,12,.8); backdrop-filter:blur(10px);
+  display:none; align-items:center; justify-content:center; padding:24px;
+}
+.modal-overlay.open { display:flex; }
+
+.modal-box {
+  background:var(--ink2);
+  border:1px solid rgba(123,111,255,.22);
+  border-radius:16px;
+  padding:44px 40px;
+  width:100%; max-width:460px;
+  box-shadow:0 0 70px rgba(123,111,255,.1);
+  animation:mIn .35s cubic-bezier(.34,1.4,.64,1) both;
+}
+@keyframes mIn {
+  from{opacity:0;transform:scale(.88) translateY(18px)}
+  to  {opacity:1;transform:scale(1) translateY(0)}
+}
+
+.modal-header {
+  display:flex; align-items:flex-start; justify-content:space-between;
+  margin-bottom:32px;
+}
+.modal-day-label {
+  font-size:10px; letter-spacing:0.24em;
+  text-transform:uppercase; color:var(--iris); margin-bottom:8px;
+}
+.modal-day-title {
+  font-family:'Cormorant Garamond',serif;
+  font-size:42px; font-weight:300; line-height:1; letter-spacing:-0.02em;
+}
+.modal-close {
+  background:none; border:none;
+  color:var(--fog2); font-size:22px;
+  cursor:none; padding:4px; line-height:1;
+  transition:color .2s;
+}
+.modal-close:hover { color:var(--cream); }
+
+/* game rows */
+.game-row {
+  display:flex; align-items:center; gap:14px;
+  padding:14px 16px; border-radius:10px;
+  border:1px solid var(--border);
+  margin-bottom:8px; cursor:none;
+  transition:background .2s, border-color .2s;
+}
+.game-row:hover { background:var(--glass); border-color:rgba(123,111,255,.2); }
+.game-row.done {
+  background:rgba(74,222,128,.07);
+  border-color:rgba(74,222,128,.22);
+}
+
+/* custom checkbox */
+.game-check {
+  width:22px; height:22px; border-radius:6px;
+  border:1.5px solid var(--fog2);
+  display:flex; align-items:center; justify-content:center;
+  flex-shrink:0;
+  transition:background .2s, border-color .2s;
+}
+.game-row.done .game-check {
+  background:var(--green2);
+  border-color:var(--green);
+}
+.game-check svg { opacity:0; transition:opacity .15s; }
+.game-row.done .game-check svg { opacity:1; }
+
+.game-name { flex:1; font-size:14px; color:var(--cream); }
+.game-row.done .game-name { color:rgba(74,222,128,.9); }
+
+/* game name as a real link */
+.game-link {
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: color .2s;
+}
+.game-link:hover { color: var(--iris2); }
+.game-row.done .game-link:hover { color: var(--green); }
+
+.play-arrow {
+  opacity: 0;
+  transform: translate(-3px, 3px);
+  transition: opacity .2s, transform .2s;
+  flex-shrink: 0;
+}
+.game-link:hover .play-arrow {
+  opacity: 1;
+  transform: translate(0, 0);
+}
+.game-row.done .play-arrow { display: none; }
+
+.game-badge {
+  font-size:10px; letter-spacing:0.12em; text-transform:uppercase;
+  color:var(--fog2); padding:3px 10px;
+  border:1px solid var(--border); border-radius:2px;
+  transition:opacity .2s, color .2s, border-color .2s;
+  cursor: none;
+  white-space: nowrap;
+}
+.game-badge:hover { color: var(--iris2); border-color: rgba(123,111,255,.3); }
+.game-row.done .game-badge { color:var(--green); border-color:rgba(74,222,128,.2); }
+.game-row.done .game-badge:hover { color: var(--fog); border-color: var(--border); }
+
+/* day status bar */
+.day-status {
+  margin-top:24px; padding:16px;
+  border-radius:10px; border:1px solid var(--border);
+  background:var(--glass);
+}
+.status-text {
+  font-size:12px; color:var(--fog); letter-spacing:0.04em;
+  margin-bottom:10px;
+}
+.status-bar-wrap { height:3px; background:rgba(255,255,255,.07); border-radius:2px; overflow:hidden; }
+.status-bar { height:100%; background:var(--iris); border-radius:2px; transition:width .4s ease; }
+.day-status.complete {
+  background:rgba(74,222,128,.06);
+  border-color:rgba(74,222,128,.2);
+}
+.day-status.complete .status-text { color:var(--green); }
+.day-status.complete .status-bar { background:var(--green); }
+.status-complete-msg {
+  font-family:'Cormorant Garamond',serif;
+  font-size:22px; font-weight:300; letter-spacing:-0.01em;
+  color:var(--green); margin-bottom:4px;
+}
+
+/* ── CONFIRM MODAL ── */
+.confirm-box {
+  max-width:380px;
+  border-color:rgba(239,68,68,.2);
+}
+.confirm-box h3 {
+  font-family:'Cormorant Garamond',serif;
+  font-size:30px; font-weight:300; margin-bottom:12px;
+}
+.confirm-box p { font-size:14px; color:var(--fog); line-height:1.7; margin-bottom:28px; }
+.confirm-btns { display:flex; gap:10px; }
+.btn {
+  flex:1; font-family:'DM Sans',sans-serif;
+  font-size:12px; letter-spacing:0.12em; text-transform:uppercase;
+  padding:12px; border-radius:6px; cursor:none;
+  transition:background .2s, color .2s;
+}
+.btn-ghost { background:none; border:1px solid var(--border); color:var(--fog); }
+.btn-ghost:hover { border-color:rgba(255,255,255,.2); color:var(--cream); }
+.btn-danger { background:rgba(239,68,68,.15); border:1px solid rgba(239,68,68,.3); color:#fca5a5; }
+.btn-danger:hover { background:rgba(239,68,68,.3); }
+
+/* confetti */
+.confetti-piece {
+  position:fixed; pointer-events:none; z-index:300;
+  border-radius:2px;
+  animation:cfall linear forwards;
+}
+@keyframes cfall {
+  to { transform:translateY(110vh) rotate(720deg); opacity:0; }
+}
+</style>
+</head>
+<body>
+
+<div id="cur"></div>
+<div class="aur aur-a"></div>
+<div class="aur aur-b"></div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <a href="index.html" class="topbar-logo">Cogni<span>care</span></a>
+  <div class="topbar-title">56 Day <em>Challenge</em></div>
+  <button class="reset-btn" id="reset-btn">Reset progress</button>
+</div>
+
+<!-- PAGE -->
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-left">
+      <h1 id="main-title">56 Day<br><em>Challenge.</em></h1>
+      <p>Complete five cognitive exercises each day to unlock the next. Build a habit, train the mind.</p>
+    </div>
+    <div class="ring-wrap">
+      <svg class="ring-svg" viewBox="0 0 140 140">
+        <circle class="ring-bg" cx="70" cy="70" r="58" stroke-width="6" fill="none"/>
+        <circle class="ring-fill" id="overall-progress-ring" cx="70" cy="70" r="58"
+          stroke-width="6" fill="none"
+          stroke-dasharray="364.4" stroke-dashoffset="364.4"
+          transform="rotate(-90 70 70)"/>
+      </svg>
+      <div class="ring-center">
+        <span class="ring-pct" id="progress-percent">0%</span>
+        <span class="ring-sub">complete</span>
+      </div>
+      <span class="ring-days" id="days-completed">0 / 56 days</span>
+    </div>
+  </div>
+
+  <!-- GRID -->
+  <div class="days-grid" id="days-grid"></div>
+
+</div>
+
+<!-- DAY MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div>
+        <div class="modal-day-label">Cognitive Training</div>
+        <div class="modal-day-title" id="modal-title">Day 1</div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="games-list"></div>
+    <div class="day-status" id="day-status"></div>
+  </div>
+</div>
+
+<!-- CONFIRM RESET MODAL -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal-box confirm-box">
+    <h3>Reset <em style="font-style:italic;color:var(--fog)">progress?</em></h3>
+    <p>This will clear all 56 days of progress. This action cannot be undone.</p>
+    <div class="confirm-btns">
+      <button class="btn btn-ghost" onclick="cancelReset()">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmReset()">Reset everything</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── CURSOR ── */
+const cur = document.getElementById('cur');
+document.addEventListener('mousemove', e => {
+  cur.style.left = e.clientX + 'px';
+  cur.style.top  = e.clientY + 'px';
+});
+function addHover(sel) {
+  document.querySelectorAll(sel).forEach(el => {
+    el.addEventListener('mouseenter', () => cur.classList.add('big'));
+    el.addEventListener('mouseleave', () => cur.classList.remove('big'));
+  });
+}
+addHover('a, button');
+
+/* ── CONFIG ── */
+const TOTAL_DAYS    = 56;
+const GAMES_PER_DAY = 5;
+
+// Each game has a display name and a URL relative to this file.
+// Update the urls to match your actual file paths.
+const GAMES = [
+  { name: 'Simon Says',       url: 'Simon_UI_Project/Home.html' },
+  { name: 'Emoji Tiles',      url: 'memory.html' },
+  { name: 'Time Capsule',     url: 'TimeCapsule_Game/Home.html' },
+  { name: 'Memory Tray',      url: 'Memorytray.html' },
+  { name: 'Color Swap',       url: 'color.html' },
+];
+
+/* ── PROGRESS ── */
+let progress = loadProgress();
+
+function loadProgress() {
+  try {
+    const s = localStorage.getItem('cognicare56Progress');
+    if (s) return JSON.parse(s);
+  } catch(e) {}
+  const init = {};
+  for (let d = 1; d <= TOTAL_DAYS; d++) init[d] = Array(GAMES_PER_DAY).fill(false);
+  return init;
+}
+function saveProgress() {
+  localStorage.setItem('cognicare56Progress', JSON.stringify(progress));
+}
+function isDayCompleted(d) { return progress[d].every(Boolean); }
+function isDayUnlocked(d)  { return d === 1 || isDayCompleted(d - 1); }
+function getCompletedCount() {
+  let c = 0;
+  for (let d = 1; d <= TOTAL_DAYS; d++) if (isDayCompleted(d)) c++;
+  return c;
+}
+
+/* ── RENDER GRID ── */
+function renderGrid() {
+  const grid = document.getElementById('days-grid');
+  grid.innerHTML = '';
+
+  for (let d = 1; d <= TOTAL_DAYS; d++) {
+    const unlocked  = isDayUnlocked(d);
+    const completed = isDayCompleted(d);
+    const done      = progress[d].filter(Boolean).length;
+    const pct       = (done / GAMES_PER_DAY) * 100;
+
+    const card = document.createElement('div');
+    card.className = 'day-card' +
+      (completed ? ' completed' : unlocked ? ' unlocked-active' : ' locked');
+
+    if (unlocked) card.onclick = () => openModal(d);
+
+    const icon = completed ? '◆' : unlocked ? '◇' : '·';
+    card.innerHTML = `
+      <span class="dc-icon" style="color:${completed ? 'var(--green)' : unlocked ? 'var(--iris)' : 'var(--fog2)'}">${icon}</span>
+      <span class="dc-num">${d}</span>
+      <span class="dc-prog">${done}/${GAMES_PER_DAY}</span>
+      <div class="dc-bar-wrap"><div class="dc-bar" style="width:${pct}%"></div></div>
+    `;
+    grid.appendChild(card);
+  }
+
+  // re-attach cursor hover to new cards
+  grid.querySelectorAll('.day-card:not(.locked)').forEach(el => {
+    el.addEventListener('mouseenter', () => cur.classList.add('big'));
+    el.addEventListener('mouseleave', () => cur.classList.remove('big'));
+  });
+
+  updateRing();
+}
+
+/* ── RING ── */
+function updateRing() {
+  const done = getCompletedCount();
+  const pct  = Math.round((done / TOTAL_DAYS) * 100);
+  const circ = 364.4;
+  document.getElementById('progress-percent').textContent  = pct + '%';
+  document.getElementById('days-completed').textContent    = `${done} / ${TOTAL_DAYS} days`;
+  document.getElementById('overall-progress-ring').style.strokeDashoffset =
+    circ - (pct / 100) * circ;
+}
+
+/* ── MODAL ── */
+let _openDay = null;
+
+function openModal(d) {
+  _openDay = d;
+  document.getElementById('modal-title').textContent = 'Day ' + d;
+  renderGamesList(d);
+  renderDayStatus(d);
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  _openDay = null;
+}
+
+function renderGamesList(d) {
+  const list = document.getElementById('games-list');
+  list.innerHTML = '';
+  GAMES.forEach((game, i) => {
+    const done = progress[d][i];
+    const row  = document.createElement('div');
+    row.className = 'game-row' + (done ? ' done' : '');
+
+    row.innerHTML = `
+      <div class="game-check mark-done" data-i="${i}" title="${done ? 'Mark incomplete' : 'Mark as done'}">
+        <svg width="12" height="10" viewBox="0 0 12 10" fill="none">
+          <path d="M1 5l3.5 3.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <a class="game-name game-link" href="${game.url}" target="_blank" rel="noopener">
+        ${game.name}
+        <svg class="play-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+      </a>
+      <span class="game-badge">${done ? 'Done' : 'Play →'}</span>
+    `;
+
+    // clicking the check bubble toggles completion
+    row.querySelector('.mark-done').addEventListener('click', e => {
+      e.stopPropagation();
+      toggleGame(d, i);
+    });
+
+    // clicking the badge also navigates if not done, or toggles if done
+    row.querySelector('.game-badge').addEventListener('click', e => {
+      e.stopPropagation();
+      if (!done) {
+        window.open(game.url, '_blank', 'noopener');
+      } else {
+        toggleGame(d, i);
+      }
+    });
+
+    list.appendChild(row);
+  });
+
+  // cursor hover
+  list.querySelectorAll('.game-row, .game-link, .mark-done').forEach(el => {
+    el.addEventListener('mouseenter', () => cur.classList.add('big'));
+    el.addEventListener('mouseleave', () => cur.classList.remove('big'));
+  });
+}
+
+function renderDayStatus(d) {
+  const el   = document.getElementById('day-status');
+  const done = progress[d].filter(Boolean).length;
+  const comp = isDayCompleted(d);
+  el.className = 'day-status' + (comp ? ' complete' : '');
+  if (comp) {
+    el.innerHTML = `
+      <div class="status-complete-msg">Day complete ◆</div>
+      <div class="status-text" style="margin-bottom:0">
+        ${d < TOTAL_DAYS ? 'Day ' + (d+1) + ' is now unlocked.' : 'You have finished the challenge!'}
+      </div>`;
+  } else {
+    el.innerHTML = `
+      <div class="status-text">${done} of ${GAMES_PER_DAY} exercises completed</div>
+      <div class="status-bar-wrap"><div class="status-bar" style="width:${(done/GAMES_PER_DAY)*100}%"></div></div>`;
+  }
+}
+
+function toggleGame(d, i) {
+  progress[d][i] = !progress[d][i];
+  saveProgress();
+  const wasComplete = isDayCompleted(d);
+  renderGamesList(d);
+  renderDayStatus(d);
+  renderGrid();
+  if (wasComplete) confetti();
+}
+
+/* ── RESET ── */
+document.getElementById('reset-btn').onclick = () =>
+  document.getElementById('confirm-modal').classList.add('open');
+function cancelReset()  { document.getElementById('confirm-modal').classList.remove('open'); }
+function confirmReset() {
+  for (let d = 1; d <= TOTAL_DAYS; d++) progress[d] = Array(GAMES_PER_DAY).fill(false);
+  saveProgress();
+  renderGrid();
+  document.getElementById('confirm-modal').classList.remove('open');
+}
+
+/* ── CONFETTI ── */
+function confetti() {
+  const cols = ['#7b6fff','#a09bff','#4ade80','#fbbf24','#f472b6','#38bdf8'];
+  for (let i = 0; i < 55; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti-piece';
+    const size = Math.random() * 9 + 5;
+    const dur  = Math.random() * 2 + 2;
+    el.style.cssText = `
+      left:${Math.random()*100}vw; top:-12px;
+      width:${size}px; height:${size * (Math.random() > .5 ? 1 : 2.5)}px;
+      background:${cols[Math.floor(Math.random()*cols.length)]};
+      border-radius:${Math.random() > .4 ? '50%' : '2px'};
+      animation-duration:${dur}s;
+    `;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), dur * 1000 + 200);
+  }
+}
+
+/* ── CLOSE MODAL ON OVERLAY CLICK ── */
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal')) closeModal();
+});
+
+/* ── INIT ── */
+renderGrid();
+</script>
+</body>
+</html>
